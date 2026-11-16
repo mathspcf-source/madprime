@@ -598,11 +598,26 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF
+// GERADOR DE PDF (Com fallback para os dados reais da MAD PRIME)
 // ============================================================
+function getCompanyInfo() {
+  const s = window.db.settings || {};
+  return {
+    company_name: s.company_name || 'MAD PRIME',
+    cnpj: s.cnpj || '49.788.369/0001-08',
+    whatsapp: s.whatsapp || '79996505113',
+    whatsapp2: s.whatsapp2 || '79996929174',
+    email: s.email || 'contato@madprime.com',
+    address: s.address || 'Av. Manoel Cruz, 277 – Bairro Dezoito do Forte, Aracaju – SE, CEP: 49.072-450',
+    logo: s.logo || null,
+    number_prefix: s.number_prefix || 'MP-2026-',
+    default_conditions: s.default_conditions || ''
+  };
+}
+
 function buildCutPlanHTML(c) {
-  const s = window.db.settings;
-  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name || 'MAD PRIME')}</div>`;
+  const s = getCompanyInfo();
+  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
   const dataObj = new Date(c.created_at);
@@ -610,7 +625,7 @@ function buildCutPlanHTML(c) {
   const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
   const numCurto = c.number.split('-').pop();
-  const handle = (s.company_name || 'MAD PRIME').replace(/\s+/g, '');
+  const handle = s.company_name.replace(/\s+/g, '');
   const unitLabel = (c.unit || 'cm').toUpperCase();
 
   return `
@@ -626,7 +641,7 @@ function buildCutPlanHTML(c) {
       <div style="margin-bottom:20px; font-size:22px; font-weight:700;">${escapeHtml(c.name || 'Sem nome')}</div>
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
         <div style="font-size:14px; color:#000000; line-height:1.6;">
-          ${escapeHtml(s.email || '')}<br>${escapeHtml(s.address || '')}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
+          ${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
         </div>
         <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
       </div>
@@ -666,14 +681,14 @@ function buildCutPlanHTML(c) {
         </tbody>
       </table>
       <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
-        <strong>${escapeHtml(s.company_name || 'MAD PRIME')}</strong> · CNPJ: ${escapeHtml(s.cnpj || '')} · ${escapeHtml(s.address || '')}
+        <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
 }
 
 function buildBudgetHTML(b) {
-  const s = window.db.settings;
-  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name || 'MAD PRIME')}</div>`;
+  const s = getCompanyInfo();
+  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
   const conditions = (b.conditions || s.default_conditions || '').trim();
@@ -682,7 +697,7 @@ function buildBudgetHTML(b) {
   const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
   const numCurto = b.number.split('-').pop();
-  const handle = (s.company_name || 'MAD PRIME').replace(/\s+/g, '');
+  const handle = s.company_name.replace(/\s+/g, '');
 
   return `
     <div style="width:800px; height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
@@ -695,7 +710,7 @@ function buildBudgetHTML(b) {
         <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
-        <div style="font-size:14px; color:#000000; line-height:1.6;">${escapeHtml(s.email || '')}<br>${escapeHtml(s.address || '')}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
+        <div style="font-size:14px; color:#000000; line-height:1.6;">${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
         <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
       </div>
       <div style="margin-bottom:30px; font-size:14px;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>
@@ -725,7 +740,7 @@ function buildBudgetHTML(b) {
       </div>
       ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:40px; padding-top:20px; border-top:1px solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
       <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
-        <strong>${escapeHtml(s.company_name || 'MAD PRIME')}</strong> · CNPJ: ${escapeHtml(s.cnpj || '')} · ${escapeHtml(s.address || '')}
+        <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
 }
@@ -805,7 +820,7 @@ async function sharePDFWhatsApp(type, id) {
   document.body.appendChild(loading);
 
   try {
-    const s = window.db.settings;
+    const s = getCompanyInfo();
     const doc = type === 'budget' ? window.db.budgets.find(x => x.id === id) : window.db.cuttingPlans.find(x => x.id === id);
     const blob = await generatePDFBlob(type, id);
     const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
@@ -814,7 +829,7 @@ async function sharePDFWhatsApp(type, id) {
     
     const phone = (s.whatsapp || '').replace(/\D/g, '');
     const title = type === 'budget' ? 'orçamento' : 'plano de corte';
-    const mensagem = `Olá! Segue em anexo o ${title} *${nameToUse}* da *${s.company_name || 'MAD PRIME'}*.`;
+    const mensagem = `Olá! Segue em anexo o ${title} *${nameToUse}* da *${s.company_name}*.`;
     const msgEncoded = encodeURIComponent(mensagem);
     const waURL = phone ? `https://wa.me/55${phone}?text=${msgEncoded}` : `https://wa.me/?text=${msgEncoded}`;
 
