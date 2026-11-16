@@ -404,8 +404,8 @@ function renderCutPlanModal() {
             <tr>
               <th style="width: 10%;">Peça</th>
               <th style="width: 15%;">Qtd</th>
-              <th style="width: 25%;">Alt. (${cutState.unit})</th>
               <th style="width: 25%;">Larg. (${cutState.unit})</th>
+              <th style="width: 25%;">Alt. (${cutState.unit})</th>
               <th style="width: 25%;">Fita</th>
             </tr>
           </thead>
@@ -424,30 +424,28 @@ function renderCutRow(item, idx) {
     <tr data-cut-row="${idx}" style="${isEmpty ? 'background: rgba(255,255,255,0.02);' : ''}">
       <td style="text-align:center; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">${idx + 1}</td>
       <td><input type="number" class="input-qty" data-cut-field="qty" data-idx="${idx}" value="${item.qty}" min="1" placeholder="1"></td>
-      <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
-      <td style="padding: 0.5rem;">
+      <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
+      <td style="padding: 0.5rem; text-align: center;">
         <div class="fita-container">
           
-          <!-- Quadradinho de Altura -->
+          <!-- Tracinhos de Largura -->
           <div class="fita-box">
-            <span class="fita-title">ALTURA</span>
-            <div class="fita-piece">
-              <button type="button" class="edge-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Altura)"></button>
-              <button type="button" class="edge-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Altura)"></button>
-              <button type="button" class="edge-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Altura)"></button>
-              <button type="button" class="edge-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Altura)"></button>
+            <span class="fita-title">LARGURA</span>
+            <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+              <button type="button" class="edge-btn ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Largura)"></button>
+              <span style="font-size: 8px; color: var(--text-secondary);">↑ Largura</span>
+              <button type="button" class="edge-btn ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Largura)"></button>
             </div>
           </div>
 
-          <!-- Quadradinho de Largura -->
+          <!-- Tracinhos de Altura -->
           <div class="fita-box">
-            <span class="fita-title">LARGURA</span>
-            <div class="fita-piece">
-              <button type="button" class="edge-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Largura)"></button>
-              <button type="button" class="edge-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Largura)"></button>
-              <button type="button" class="edge-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Largura)"></button>
-              <button type="button" class="edge-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Largura)"></button>
+            <span class="fita-title">ALTURA</span>
+            <div style="display: flex; flex-direction: row; gap: 4px; align-items: center; justify-content: center;">
+              <button type="button" class="edge-btn ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Altura)"></button>
+              <span style="font-size: 8px; color: var(--text-secondary); transform: rotate(-90deg);">↑ Altura</span>
+              <button type="button" class="edge-btn ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Altura)"></button>
             </div>
           </div>
 
@@ -473,7 +471,7 @@ function openCutPlanViewModal(planId) {
           <strong style="color:var(--primary);">Peça ${idx + 1}</strong>
           <span class="badge badge-pending">${item.qty || 1}x</span>
         </div>
-        <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Dimensões:</strong> ${item.height}${c.unit || 'cm'} (A) x ${item.width}${c.unit || 'cm'} (L)</p>
+        <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Dimensões:</strong> ${item.width}${c.unit || 'cm'} (L) x ${item.height}${c.unit || 'cm'} (A)</p>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong> 
           ${item.top ? 'Topo ' : ''}${item.bottom ? 'Base ' : ''}${item.left ? 'Esq ' : ''}${item.right ? 'Dir' : ''}
           ${!item.top && !item.bottom && !item.left && !item.right ? 'Nenhuma' : ''}
@@ -720,8 +718,8 @@ function buildCutPlanHTML(c) {
           <tr style="background:#000000; color:#ffffff;">
             <th style="text-align:center; padding:10px; width:50px; border-radius:4px 0 0 4px;">Peça</th>
             <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
-            <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
             <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
+            <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
             <th style="text-align:center; padding:10px; width:80px; border-radius:0 4px 4px 0;">Fita</th>
           </tr>
         </thead>
@@ -730,8 +728,8 @@ function buildCutPlanHTML(c) {
             <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
               <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
               <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
+              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
               <td style="text-align:center; padding:12px 10px;">
                 <div style="display:inline-block; width:30px; height:30px; position:relative; border:1px solid #ccc;">
                   ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000;"></div>' : ''}
@@ -1246,8 +1244,8 @@ document.addEventListener('click', async (e) => {
   if (action === 'set-unit') {
     cutState.unit = target.dataset.unit;
     document.querySelectorAll('.unit-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.unit === cutState.unit));
-    document.querySelectorAll('th')[2].textContent = `Alt. (${cutState.unit})`;
-    document.querySelectorAll('th')[3].textContent = `Larg. (${cutState.unit})`;
+    document.querySelectorAll('th')[2].textContent = `Larg. (${cutState.unit})`;
+    document.querySelectorAll('th')[3].textContent = `Alt. (${cutState.unit})`;
     return;
   }
 });
