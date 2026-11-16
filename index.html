@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MAD PRIME · Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toast-container"></div>
+
+  <script src="supabase.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      let loginProfile = 'client';
+      
+      await loadDB();
+      renderLogin();
+      lucide.createIcons();
+
+      function renderLogin() {
+        const app = document.getElementById('app');
+        app.innerHTML = `
+          <div class="login-wrapper">
+            <div class="card login-card">
+              <div class="logo"><i data-lucide="hammer"></i> MAD PRIME</div>
+              <h1>Bem-vindo</h1>
+              <p class="subtitle">Sistema de Gestão</p>
+              <div class="login-tabs">
+                <button type="button" class="login-tab ${loginProfile === 'client' ? 'active' : ''}" data-action="login-profile" data-profile="client">Cliente</button>
+                <button type="button" class="login-tab ${loginProfile === 'admin' ? 'active' : ''}" data-action="login-profile" data-profile="admin">Administrador</button>
+              </div>
+              <div class="flex flex-col gap-2">
+                <div><label class="label">E-mail</label><input class="input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="username"></div>
+                <div><label class="label">Senha</label><input class="input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+                <button type="button" class="btn btn-primary w-full mt-1" data-action="do-login"><i data-lucide="log-in"></i> Entrar</button>
+              </div>
+              <div class="demo-hint"><strong>Demonstração</strong><br>Admin: admin@madprime.com / admin123<br>Cliente: cliente@demo.com / demo123</div>
+            </div>
+            <div class="copyright" style="position: absolute; bottom: 10px;">&copy; 2026 MAD PRIME - Todos os direitos reservados.</div>
+          </div>`;
+        lucide.createIcons();
+      }
+
+      document.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+        const action = target.dataset.action;
+
+        if (action === 'login-profile') { 
+          loginProfile = target.dataset.profile; 
+          renderLogin(); 
+          return; 
+        }
+        
+        if (action === 'do-login') {
+          const email = document.getElementById('login-email')?.value || '';
+          const password = document.getElementById('login-password')?.value || '';
+          const user = window.db.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password && u.type === loginProfile && u.active);
+          
+          if (user) { 
+            sessionStorage.setItem('madprime_user', JSON.stringify(user));
+            if (loginProfile === 'admin') {
+              window.location.href = 'admin.html';
+            } else {
+              window.location.href = 'cliente.html';
+            }
+          } else {
+            showToast('Credenciais inválidas para o perfil selecionado.', 'error');
+          }
+          return;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
