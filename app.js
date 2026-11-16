@@ -480,7 +480,51 @@ function openCutPlanViewModal(planId) {
 }
 
 // ============================================================
-// ORÇAMENTO
+// VISUALIZAR ORÇAMENTO (CORRIGIDO)
+// ============================================================
+function openBudgetViewModal(budgetId) {
+  const b = window.db.budgets.find(x => x.id === budgetId);
+  if (!b) return;
+  
+  let itemsHtml = b.items.map((i, idx) => `
+    <div style="border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 0.6rem; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div style="font-weight:500; font-size:0.9rem;">${idx + 1}. ${escapeHtml(i.name)}</div>
+        <div style="font-size:0.8rem; color:var(--text-secondary);">${formatCurrency(i.price)} / un.</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-weight:600; font-size:0.9rem;">Qtd: ${i.qty}</div>
+        <div style="font-weight:700; color:var(--green); font-size:0.9rem;">${formatCurrency(i.price * i.qty)}</div>
+      </div>
+    </div>
+  `).join('');
+
+  openModal(`Orçamento: ${b.number}`, `
+    <div class="flex flex-col gap-1">
+      <p><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</p>
+      <p><strong>Data:</strong> ${formatDate(b.created_at)}</p>
+      <p><strong>Status:</strong> <span class="badge badge-${b.status}">${b.status === 'pending' ? 'Pendente' : b.status === 'approved' ? 'Aprovado' : 'Recusado'}</span></p>
+      
+      <h3 class="mt-2 mb-1">Itens do Orçamento</h3>
+      <div style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+        ${itemsHtml}
+      </div>
+      
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem; margin-top:1rem; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:600; font-size:1rem;">Total:</span>
+        <span style="font-weight:700; font-size:1.3rem; color:var(--green);">${formatCurrency(b.total)}</span>
+      </div>
+
+      <div class="flex gap-1 mt-2" style="flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm btn-outline" data-action="pdf-budget" data-id="${b.id}"><i data-lucide="file-down"></i> Baixar PDF</button>
+        <button type="button" class="btn btn-sm btn-green" data-action="share-pdf-whatsapp" data-id="${b.id}"><i data-lucide="share-2"></i> Enviar via WhatsApp</button>
+      </div>
+    </div>
+  `);
+}
+
+// ============================================================
+// ORÇAMENTO (CARRINHO)
 // ============================================================
 function openNewBudgetModal() {
   budgetState.cart = []; budgetState.category = 'all'; budgetState.search = ''; budgetState.editId = null; budgetState.editingNumber = ''; budgetState.mobileTab = 'catalog';
@@ -598,7 +642,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF (Com fallback para os dados reais da MAD PRIME)
+// GERADOR DE PDF
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -1043,6 +1087,7 @@ document.addEventListener('click', async (e) => {
   if (action === 'view-cut-plan') { openCutPlanViewModal(target.dataset.id); return; }
   if (action === 'new-budget') { openNewBudgetModal(); return; }
   if (action === 'edit-budget') { openEditBudgetModal(target.dataset.id); return; }
+  if (action === 'view-budget') { openBudgetViewModal(target.dataset.id); return; } // CORRIGIDO AQUI
   
   if (action === 'save-client') { saveClient(); return; }
   if (action === 'save-material') { saveMaterial(); return; }
