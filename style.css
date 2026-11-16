@@ -811,84 +811,57 @@ body:has(.login-wrapper) #app {
 .cut-table input:focus { border-color: var(--primary); background: rgba(77, 124, 254, 0.05); }
 .cut-table input::placeholder { color: var(--text-secondary); opacity: 0.3; }
 
-/* NOVO VISUAL DA FITA (DOIS QUADRADINHOS) */
+/* NOVO VISUAL DA FITA (DOIS TRACINHOS) */
 .fita-container {
   display: flex;
   gap: 10px;
   justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
 }
+
 .fita-box {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   background: rgba(255,255,255,0.03);
-  padding: 5px;
+  padding: 8px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  min-width: 50px;
+  min-width: 60px;
+  min-height: 60px;
 }
+
 .fita-title {
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 700;
   color: var(--text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
-.fita-piece {
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--text-secondary);
-  position: relative;
+
+.edge-btn {
+  width: 20px;
+  height: 6px;
   border-radius: 3px;
+  border: 1px solid var(--border);
   background: var(--bg);
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
 }
-.fita-piece .edge-top {
-  position: absolute;
-  top: -4px; left: 0; right: 0; height: 8px;
-  background: transparent; border: none; cursor: pointer; z-index: 2;
+
+.edge-btn:hover {
+  border-color: var(--primary);
+  background: rgba(77, 124, 254, 0.2);
 }
-.fita-piece .edge-top::after {
-  content: ''; position: absolute; top: 1px; left: 1px; right: 1px; height: 3px;
-  background: var(--border); border-radius: 1px;
-}
-.fita-piece .edge-top.active::after {
-  background: var(--primary); box-shadow: 0 0 4px rgba(77, 124, 254, 0.6);
-}
-.fita-piece .edge-bottom {
-  position: absolute;
-  bottom: -4px; left: 0; right: 0; height: 8px;
-  background: transparent; border: none; cursor: pointer; z-index: 2;
-}
-.fita-piece .edge-bottom::after {
-  content: ''; position: absolute; bottom: 1px; left: 1px; right: 1px; height: 3px;
-  background: var(--border); border-radius: 1px;
-}
-.fita-piece .edge-bottom.active::after {
-  background: var(--primary); box-shadow: 0 0 4px rgba(77, 124, 254, 0.6);
-}
-.fita-piece .edge-left {
-  position: absolute;
-  left: -4px; top: 0; bottom: 0; width: 8px;
-  background: transparent; border: none; cursor: pointer; z-index: 2;
-}
-.fita-piece .edge-left::after {
-  content: ''; position: absolute; left: 1px; top: 1px; bottom: 1px; width: 3px;
-  background: var(--border); border-radius: 1px;
-}
-.fita-piece .edge-left.active::after {
-  background: var(--primary); box-shadow: 0 0 4px rgba(77, 124, 254, 0.6);
-}
-.fita-piece .edge-right {
-  position: absolute;
-  right: -4px; top: 0; bottom: 0; width: 8px;
-  background: transparent; border: none; cursor: pointer; z-index: 2;
-}
-.fita-piece .edge-right::after {
-  content: ''; position: absolute; right: 1px; top: 1px; bottom: 1px; width: 3px;
-  background: var(--border); border-radius: 1px;
-}
-.fita-piece .edge-right.active::after {
-  background: var(--primary); box-shadow: 0 0 4px rgba(77, 124, 254, 0.6);
+
+.edge-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 6px rgba(77, 124, 254, 0.5);
 }
 
 /* Fullscreen Modal Override */
