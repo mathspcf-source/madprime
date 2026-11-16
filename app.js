@@ -418,6 +418,9 @@ function renderCutPlanModal() {
   `, true);
 }
 
+// ============================================================
+// LINHA DA PEÇA COM INDICAÇÃO DE ALTURA E LARGURA
+// ============================================================
 function renderCutRow(item, idx) {
   const isEmpty = !item.height && !item.width;
   return `
@@ -427,11 +430,17 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
       <td>
-        <div class="piece-visual">
-          <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Topo"></button>
-          <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Base"></button>
-          <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Esquerda"></button>
-          <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Direita"></button>
+        <div class="piece-visual" style="display: flex; align-items: center; justify-content: center; position: relative;">
+          
+          <!-- Textos indicativos de Altura e Largura -->
+          <span style="position: absolute; left: 3px; top: 50%; transform: translateY(-50%) rotate(-90deg); font-size: 6px; color: var(--text-secondary); pointer-events: none; z-index: 1; font-weight: 700; letter-spacing: 0.5px;">ALT</span>
+          <span style="position: absolute; top: 3px; left: 50%; transform: translateX(-50%); font-size: 6px; color: var(--text-secondary); pointer-events: none; z-index: 1; font-weight: 700; letter-spacing: 0.5px;">LARG</span>
+
+          <!-- Botões de Fita -->
+          <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Altura)"></button>
+          <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Altura)"></button>
+          <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Largura)"></button>
+          <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Largura)"></button>
         </div>
       </td>
     </tr>
@@ -480,7 +489,7 @@ function openCutPlanViewModal(planId) {
 }
 
 // ============================================================
-// VISUALIZAR ORÇAMENTO (CORRIGIDO)
+// VISUALIZAR ORÇAMENTO
 // ============================================================
 function openBudgetViewModal(budgetId) {
   const b = window.db.budgets.find(x => x.id === budgetId);
@@ -1087,7 +1096,7 @@ document.addEventListener('click', async (e) => {
   if (action === 'view-cut-plan') { openCutPlanViewModal(target.dataset.id); return; }
   if (action === 'new-budget') { openNewBudgetModal(); return; }
   if (action === 'edit-budget') { openEditBudgetModal(target.dataset.id); return; }
-  if (action === 'view-budget') { openBudgetViewModal(target.dataset.id); return; } // CORRIGIDO AQUI
+  if (action === 'view-budget') { openBudgetViewModal(target.dataset.id); return; }
   
   if (action === 'save-client') { saveClient(); return; }
   if (action === 'save-material') { saveMaterial(); return; }
