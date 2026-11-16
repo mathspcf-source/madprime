@@ -3,7 +3,9 @@ let budgetState = { cart: [], category: 'all', search: '', editId: null, editing
 let cutState = { editId: null, editNumber: '', items: [], unit: 'cm', materialPadrao: 'MDF Branco 18mm', name: '' };
 let materialFilter = 'all';
 
-// Funções auxiliares
+// ============================================================
+// FUNÇÕES AUXILIARES
+// ============================================================
 function uid(prefix = 'id') { return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
 function formatCurrency(v) { return 'R$ ' + Number(v).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 function formatDate(iso) { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
@@ -41,7 +43,7 @@ function renderApp() {
 }
 
 // ============================================================
-// SHELL (Menu Dinâmico)
+// SHELL
 // ============================================================
 function renderShell() {
   const isAdmin = window.isAdminMode;
@@ -596,17 +598,13 @@ function refreshCart() {
 }
 
 // ============================================================
-// PDF GERADORES (Funções de construir HTML)
+// GERADOR DE PDF
 // ============================================================
 function buildCutPlanHTML(c) {
   const s = window.db.settings;
-  const logoSVG = s.logo 
-    ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` 
-    : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name || 'MAD PRIME')}</div>`;
-  
+  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name || 'MAD PRIME')}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
-  
   const dataObj = new Date(c.created_at);
   const dia = dataObj.getDate().toString().padStart(2, '0');
   const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -732,6 +730,115 @@ function buildBudgetHTML(b) {
     </div>`;
 }
 
+function generatePDFBlob(type, id) {
+  return new Promise((resolve, reject) => {
+    let htmlContent = '';
+    if (type === 'budget') {
+      const b = window.db.budgets.find(x => x.id === id);
+      if (!b) return reject('Orçamento não encontrado.');
+      htmlContent = buildBudgetHTML(b);
+    } else if (type === 'cut') {
+      const c = window.db.cuttingPlans.find(x => x.id === id);
+      if (!c) return reject('Plano de Corte não encontrado.');
+      htmlContent = buildCutPlanHTML(c);
+    }
+
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '800px';
+    container.style.height = '1120px';
+    container.style.background = '#ffffff';
+    container.innerHTML = htmlContent;
+    document.body.appendChild(container);
+
+    html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      width: 800,
+      height: 1120
+    }).then((canvas) => {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      container.remove();
+      resolve(pdf.output('blob'));
+    }).catch((err) => {
+      container.remove();
+      reject(err);
+    });
+  });
+}
+
+async function downloadPDF(type, id) {
+  const loading = document.createElement('div');
+  loading.className = 'pdf-loading';
+  loading.innerHTML = `<div class="spinner"></div><span>Gerando PDF...</span>`;
+  document.body.appendChild(loading);
+
+  try {
+    const blob = await generatePDFBlob(type, id);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; 
+    const doc = type === 'budget' ? window.db.budgets.find(x => x.id === id) : window.db.cuttingPlans.find(x => x.id === id);
+    const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
+    a.download = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${nameToUse}.pdf`; 
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('PDF gerado com sucesso!', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao gerar PDF.', 'error');
+  } finally {
+    loading.remove();
+  }
+}
+
+async function sharePDFWhatsApp(type, id) {
+  const loading = document.createElement('div');
+  loading.className = 'pdf-loading';
+  loading.innerHTML = `<div class="spinner"></div><span>Preparando PDF...</span>`;
+  document.body.appendChild(loading);
+
+  try {
+    const s = window.db.settings;
+    const doc = type === 'budget' ? window.db.budgets.find(x => x.id === id) : window.db.cuttingPlans.find(x => x.id === id);
+    const blob = await generatePDFBlob(type, id);
+    const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
+    const fileName = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${nameToUse}.pdf`;
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+    
+    const phone = (s.whatsapp || '').replace(/\D/g, '');
+    const title = type === 'budget' ? 'orçamento' : 'plano de corte';
+    const mensagem = `Olá! Segue em anexo o ${title} *${nameToUse}* da *${s.company_name || 'MAD PRIME'}*.`;
+    const msgEncoded = encodeURIComponent(mensagem);
+    const waURL = phone ? `https://wa.me/55${phone}?text=${msgEncoded}` : `https://wa.me/?text=${msgEncoded}`;
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: `${type === 'budget' ? 'Orçamento' : 'Plano de Corte'} ${nameToUse}`, text: mensagem });
+      showToast('PDF compartilhado!', 'success');
+    } else {
+      showToast('PDF baixado! Abrindo WhatsApp...', 'success');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName; a.click();
+      URL.revokeObjectURL(url);
+      setTimeout(() => window.open(waURL, '_blank'), 600);
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error(err);
+      showToast('Erro ao gerar/compartilhar PDF.', 'error');
+    }
+  } finally {
+    loading.remove();
+  }
+}
+
 // ============================================================
 // AÇÕES DE SALVAR (SUPABASE)
 // ============================================================
@@ -803,18 +910,17 @@ async function saveClient() {
   const email = document.getElementById('cl-email')?.value.trim();
   const document_ = document.getElementById('cl-document')?.value.trim();
   const phone = document.getElementById('cl-phone')?.value.trim();
-  const isEdit = !!document.getElementById('cl-password') ? false : true; // Lógica simples para saber se é novo
+  const id = document.getElementById('cl-id')?.value;
 
   if (!name || !email) { showToast('Nome e e-mail são obrigatórios.', 'error'); return; }
 
-  if (!isEdit) {
+  if (!id) {
     const password = document.getElementById('cl-password')?.value;
     if (!password || password.length < 4) { showToast('Senha mínima de 4 caracteres.', 'error'); return; }
     const { error } = await supabaseClient.from('users').insert([{ type: 'client', name, email, document: document_, phone, password, active: true, created_at: new Date().toISOString() }]);
     if (error) { showToast('Erro ao cadastrar.', 'error'); return; }
     showToast('Cliente cadastrado!', 'success');
   } else {
-    const id = document.getElementById('cl-id')?.value;
     const { error } = await supabaseClient.from('users').update({name, email, document: document_, phone}).eq('id', id);
     if (error) { showToast('Erro ao atualizar.', 'error'); return; }
     showToast('Cliente atualizado!', 'success');
@@ -911,10 +1017,8 @@ document.addEventListener('click', async (e) => {
   if (action === 'navigate') { navigate(target.dataset.page); return; }
   if (action === 'close-modal') { closeModal(); return; }
 
-  // Filtros
   if (action === 'filter-materials') { materialFilter = target.dataset.cat; renderApp(); return; }
 
-  // Modais
   if (action === 'new-client') { openClientModal(); return; }
   if (action === 'edit-client') { openClientModal(target.dataset.id); return; }
   if (action === 'new-material') { openMaterialModal(); return; }
@@ -925,7 +1029,6 @@ document.addEventListener('click', async (e) => {
   if (action === 'new-budget') { openNewBudgetModal(); return; }
   if (action === 'edit-budget') { openEditBudgetModal(target.dataset.id); return; }
   
-  // Salvar itens
   if (action === 'save-client') { saveClient(); return; }
   if (action === 'save-material') { saveMaterial(); return; }
   if (action === 'save-cut-plan') { 
@@ -942,7 +1045,12 @@ document.addEventListener('click', async (e) => {
   if (action === 'update-budget') { updateBudget(); return; }
   if (action === 'save-settings') { saveSettings(); return; }
 
-  // Ações de banco (Aprovar, Recusar, Excluir)
+  // PDFs e WhatsApp
+  if (action === 'pdf-cut-plan') { downloadPDF('cut', target.dataset.id); return; }
+  if (action === 'share-cut-plan-whatsapp') { sharePDFWhatsApp('cut', target.dataset.id); return; }
+  if (action === 'pdf-budget') { downloadPDF('budget', target.dataset.id); return; }
+  if (action === 'share-pdf-whatsapp') { sharePDFWhatsApp('budget', target.dataset.id); return; }
+
   if (action === 'approve-cut-plan') {
     await supabaseClient.from('cutting_plans').update({status: 'approved'}).eq('id', target.dataset.id); 
     await loadDB(); renderApp(); showToast('Plano aprovado!', 'success'); return;
@@ -990,7 +1098,6 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
-  // Filtros do Orçamento
   if (action === 'budget-tab') {
     budgetState.mobileTab = target.dataset.tab;
     document.querySelectorAll('.budget-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === budgetState.mobileTab));
@@ -1042,7 +1149,6 @@ document.addEventListener('click', async (e) => {
     refreshCart(); showToast('Item adicionado.', 'success'); return;
   }
 
-  // Toggle Fita e Limpar Linha
   if (action === 'clear-cut-item') {
     const idx = parseInt(target.dataset.idx);
     if (cutState.items[idx]) {
@@ -1089,7 +1195,7 @@ document.addEventListener('input', (e) => {
   }
 });
 
-// Upload da Logo nas configurações
+// Upload da Logo
 document.addEventListener('change', (e) => {
   if (e.target.id === 'cfg-logo') {
     const file = e.target.files[0];
