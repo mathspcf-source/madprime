@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MAD PRIME · Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app"></div>
+  <div id="modal-root"></div>
+  <div id="toast-container"></div>
+
+  <script src="supabase.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const sessionUser = sessionStorage.getItem('madprime_user');
+      if (!sessionUser) { window.location.href = 'index.html'; return; }
+      window.currentUser = JSON.parse(sessionUser);
+      if (window.currentUser.type !== 'admin') { window.location.href = 'cliente.html'; return; }
+
+      await loadDB();
+      window.isAdminMode = true; // Flag para o app.js saber qual menu montar
+      renderApp();
+    });
+  </script>
+</body>
+</html>
