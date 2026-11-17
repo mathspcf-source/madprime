@@ -482,7 +482,7 @@ function openCutPlanViewModal(planId) {
         </div>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Dimensões:</strong> ${item.height}${c.unit || 'cm'} (A) x ${item.width}${c.unit || 'cm'} (L)</p>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong> 
-          ${item.top ? 'Topo ' : ''}${item.bottom ? 'Base ' : ''}${item.left ? 'Esq ' : ''}${item.right ? 'Dir' : ''}
+          ${item.left ? 'A1 ' : ''}${item.right ? 'A2 ' : ''}${item.bottom ? 'L1 ' : ''}${item.top ? 'L2' : ''}
           ${!item.top && !item.bottom && !item.left && !item.right ? 'Nenhuma' : ''}
         </p>
       </div>
@@ -685,6 +685,22 @@ function getCompanyInfo() {
   };
 }
 
+// Quadradinhos de fita para o PDF (A1, A2, L1, L2): borda tracejada + barra vermelha na lateral com fita
+function buildFitaPDF(i) {
+  const bar = {
+    left:   'top:-3px; bottom:-3px; left:-6px; width:5px;',
+    right:  'top:-3px; bottom:-3px; right:-6px; width:5px;',
+    bottom: 'left:-3px; right:-3px; bottom:-6px; height:5px;',
+    top:    'left:-3px; right:-3px; top:-6px; height:5px;'
+  };
+  const box = (label, edge) => `
+    <div style="display:inline-block; position:relative; width:26px; height:26px; box-sizing:border-box; border:2px dashed #555; margin:0 6px; vertical-align:middle; text-align:center; line-height:22px; font-size:10px; font-weight:800; color:#000;">
+      ${label}
+      ${i[edge] ? `<div style="position:absolute; ${bar[edge]} background:#e53935;"></div>` : ''}
+    </div>`;
+  return box('A1', 'left') + box('A2', 'right') + box('L1', 'bottom') + box('L2', 'top');
+}
+
 function buildCutPlanHTML(c) {
   const s = getCompanyInfo();
   const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
@@ -729,7 +745,7 @@ function buildCutPlanHTML(c) {
             <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
             <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
             <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:80px; border-radius:0 4px 4px 0;">Fita</th>
+            <th style="text-align:center; padding:10px; width:190px; border-radius:0 4px 4px 0;">Fita</th>
           </tr>
         </thead>
         <tbody>
@@ -740,12 +756,7 @@ function buildCutPlanHTML(c) {
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
               <td style="text-align:center; padding:12px 10px;">
-                <div style="display:inline-block; width:30px; height:30px; position:relative; border:1px solid #ccc;">
-                  ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000;"></div>' : ''}
-                  ${i.bottom ? '<div style="position:absolute; bottom:0; left:0; right:0; height:3px; background:#000;"></div>' : ''}
-                  ${i.left ? '<div style="position:absolute; top:0; bottom:0; left:0; width:3px; background:#000;"></div>' : ''}
-                  ${i.right ? '<div style="position:absolute; top:0; bottom:0; right:0; width:3px; background:#000;"></div>' : ''}
-                </div>
+                ${buildFitaPDF(i)}
               </td>
             </tr>`).join('')}
         </tbody>
