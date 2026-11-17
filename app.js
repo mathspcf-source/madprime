@@ -978,7 +978,7 @@ async function updateCutPlan() {
   if (!c) { showToast('Plano não encontrado.', 'error'); return; }
   if (c.status !== 'pending') { showToast('Este plano não pode mais ser editado.', 'warning'); return; }
 
-  const updatedCutPlan = { name: cutState.name, items: validItems.map(i => ({ ...i })), unit: cutState.unit, material_padrao: cutState.materialPadrao, updated_at: new Date().toISOString() };
+  const updatedCutPlan = { name: cutState.name, items: validItems.map(i => ({ ...i })), unit: cutState.unit, material_padrao: cutState.materialPadrao };
   const { error } = await supabaseClient.from('cutting_plans').update(updatedCutPlan).eq('id', c.id);
   if (error) { console.error('Erro ao atualizar plano de corte:', error); showToast('Erro ao atualizar: ' + (error.message || 'desconhecido'), 'error'); } 
   else { await loadDB(); closeModal(); renderApp(); showToast('Plano de corte atualizado!', 'success'); }
