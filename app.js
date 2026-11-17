@@ -427,43 +427,42 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td>
-        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; padding: 0.6rem 0;">
-          
-          <!-- L1 (Esquerda / Largura) -->
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0;">
+        <div style="display: flex; align-items: center; justify-content: center; position: relative; padding: 1rem 0;">
+
+          <!-- L1 (Esquerda) -->
+          <div style="display: flex; align-items: center; gap: 2px; margin-right: 2px;">
             <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L1</span>
-            <div style="width: 8px; height: 1px; background: var(--text-secondary); margin-top: 2px;"></div>
+            <div style="width: 8px; height: 1px; background: var(--text-secondary);"></div>
           </div>
 
           <!-- Quadrado Menor (24x24) -->
           <div class="piece-visual" style="width: 24px; height: 24px; position: relative; margin: 0; flex-shrink: 0;">
-            <!-- L2 (Topo / Largura) -->
-            <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
-              <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L2</span>
-              <div style="width: 1px; height: 6px; background: var(--text-secondary);"></div>
-            </div>
 
-            <!-- A1 (Direita / Altura) -->
-            <div style="position: absolute; right: -16px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 1px;">
-              <div style="width: 6px; height: 1px; background: var(--text-secondary);"></div>
+            <!-- A1 (Topo) -->
+            <div style="position: absolute; top: -18px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
               <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A1</span>
+              <div style="width: 1px; height: 7px; background: var(--text-secondary);"></div>
             </div>
 
-            <!-- A2 (Base / Altura) -->
-            <div style="position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
-              <div style="width: 1px; height: 6px; background: var(--text-secondary);"></div>
+            <!-- A2 (Base) -->
+            <div style="position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
+              <div style="width: 1px; height: 7px; background: var(--text-secondary);"></div>
               <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A2</span>
             </div>
 
             <!-- Botões das Bordas (Fita) -->
-            <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="L2 (Topo)"></button>
+            <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="A1 (Topo)"></button>
             <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="A2 (Base)"></button>
             <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="L1 (Esquerda)"></button>
-            <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="A1 (Direita)"></button>
+            <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="L2 (Direita)"></button>
           </div>
 
-          <!-- Espaçamento para não colar na borda direita -->
-          <div style="width: 14px;"></div>
+          <!-- L2 (Direita) -->
+          <div style="display: flex; align-items: center; gap: 2px; margin-left: 2px;">
+            <div style="width: 8px; height: 1px; background: var(--text-secondary);"></div>
+            <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L2</span>
+          </div>
+
         </div>
       </td>
     </tr>
@@ -488,7 +487,7 @@ function openCutPlanViewModal(planId) {
         </div>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Dimensões:</strong> ${item.width}${c.unit || 'cm'} (L) x ${item.height}${c.unit || 'cm'} (A)</p>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong> 
-          ${item.top ? 'L2 ' : ''}${item.bottom ? 'A2 ' : ''}${item.left ? 'L1 ' : ''}${item.right ? 'A1' : ''}
+          ${item.top ? 'A1 ' : ''}${item.bottom ? 'A2 ' : ''}${item.left ? 'L1 ' : ''}${item.right ? 'L2' : ''}
           ${!item.top && !item.bottom && !item.left && !item.right ? 'Nenhuma' : ''}
         </p>
       </div>
@@ -735,7 +734,7 @@ function buildCutPlanHTML(c) {
             <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
             <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
             <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:80px; border-radius:0 4px 4px 0;">Fita</th>
+            <th style="text-align:center; padding:10px; width:110px; border-radius:0 4px 4px 0;">Fita</th>
           </tr>
         </thead>
         <tbody>
@@ -746,30 +745,26 @@ function buildCutPlanHTML(c) {
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
               <td style="text-align:center; padding:12px 10px;">
-                <div style="display:flex; align-items:center; justify-content:center; gap:4px; position:relative;">
+                <div style="display:flex; align-items:center; justify-content:center; position:relative; padding:8px 0;">
+
                   <!-- L1 (Esquerda) -->
-                  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0;">
+                  <div style="display:flex; align-items:center; gap:1px; margin-right:2px;">
                     <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">L1</span>
-                    <div style="width:6px; height:1px; background:#000; margin-top:1px;"></div>
+                    <div style="width:6px; height:1px; background:#000;"></div>
                   </div>
 
-                  <!-- Quadrado Menor (20x20 para o PDF) -->
+                  <!-- Quadrado 20x20 -->
                   <div style="width:20px; height:20px; position:relative; border:1px solid #ccc; flex-shrink:0;">
-                    <!-- L2 (Topo) -->
-                    <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
-                      <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">L2</span>
-                      <div style="width:1px; height:4px; background:#000;"></div>
-                    </div>
 
-                    <!-- A1 (Direita) -->
-                    <div style="position:absolute; right:-12px; top:50%; transform:translateY(-50%); display:flex; align-items:center; gap:1px;">
-                      <div style="width:4px; height:1px; background:#000;"></div>
+                    <!-- A1 (Topo) -->
+                    <div style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
                       <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">A1</span>
+                      <div style="width:1px; height:5px; background:#000;"></div>
                     </div>
 
                     <!-- A2 (Base) -->
-                    <div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
-                      <div style="width:1px; height:4px; background:#000;"></div>
+                    <div style="position:absolute; bottom:-12px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
+                      <div style="width:1px; height:5px; background:#000;"></div>
                       <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">A2</span>
                     </div>
 
@@ -779,8 +774,12 @@ function buildCutPlanHTML(c) {
                     ${i.right ? '<div style="position:absolute; top:0; bottom:0; right:0; width:3px; background:#000; z-index:2;"></div>' : ''}
                   </div>
 
-                  <!-- Espaçamento direito para balancear -->
-                  <div style="width:12px;"></div>
+                  <!-- L2 (Direita) -->
+                  <div style="display:flex; align-items:center; gap:1px; margin-left:2px;">
+                    <div style="width:6px; height:1px; background:#000;"></div>
+                    <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">L2</span>
+                  </div>
+
                 </div>
               </td>
             </tr>`).join('')}
