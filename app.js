@@ -402,11 +402,11 @@ function renderCutPlanModal() {
         <table class="cut-table">
           <thead>
             <tr>
-              <th style="width: 14%;">Peça</th>
-              <th style="width: 16%;">Qtd</th>
-              <th style="width: 26%;">Alt. (${cutState.unit})</th>
-              <th style="width: 26%;">Larg. (${cutState.unit})</th>
-              <th style="width: 18%;">Fita</th>
+              <th style="width: 10%;">Peça</th>
+              <th style="width: 15%;">Qtd</th>
+              <th style="width: 25%;">Alt. (${cutState.unit})</th>
+              <th style="width: 25%;">Larg. (${cutState.unit})</th>
+              <th style="width: 25%;">Fita</th>
             </tr>
           </thead>
           <tbody id="cut-tbody">
@@ -418,9 +418,6 @@ function renderCutPlanModal() {
   `, true);
 }
 
-// ============================================================
-// LINHA DA PEÇA COM INDICAÇÃO DE ALTURA E LARGURA
-// ============================================================
 function renderCutRow(item, idx) {
   const isEmpty = !item.height && !item.width;
   return `
@@ -429,18 +426,29 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-qty" data-cut-field="qty" data-idx="${idx}" value="${item.qty}" min="1" placeholder="1"></td>
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
-      <td>
-        <div class="piece-visual" style="display: flex; align-items: center; justify-content: center; position: relative;">
+      <td style="padding: 0.5rem; text-align: center;">
+        <div class="edge-selector">
+          <div class="edge-row">
+            <span class="edge-label">L</span>
+            <button type="button" class="edge-btn-h ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Largura)"></button>
+            <span class="edge-label">L</span>
+          </div>
           
-          <!-- Textos indicativos de Altura e Largura -->
-          <span style="position: absolute; left: 3px; top: 50%; transform: translateY(-50%) rotate(-90deg); font-size: 6px; color: var(--text-secondary); pointer-events: none; z-index: 1; font-weight: 700; letter-spacing: 0.5px;">ALT</span>
-          <span style="position: absolute; top: 3px; left: 50%; transform: translateX(-50%); font-size: 6px; color: var(--text-secondary); pointer-events: none; z-index: 1; font-weight: 700; letter-spacing: 0.5px;">LARG</span>
-
-          <!-- Botões de Fita -->
-          <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Altura)"></button>
-          <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Altura)"></button>
-          <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Largura)"></button>
-          <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Largura)"></button>
+          <div class="edge-row middle">
+            <span class="edge-label">A</span>
+            <button type="button" class="edge-btn-v ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Altura)"></button>
+            <div class="piece-center">
+              <span>PEÇA</span>
+            </div>
+            <button type="button" class="edge-btn-v ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Altura)"></button>
+            <span class="edge-label">A</span>
+          </div>
+          
+          <div class="edge-row">
+            <span class="edge-label">L</span>
+            <button type="button" class="edge-btn-h ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Largura)"></button>
+            <span class="edge-label">L</span>
+          </div>
         </div>
       </td>
     </tr>
