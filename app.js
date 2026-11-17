@@ -404,9 +404,9 @@ function renderCutPlanModal() {
             <tr>
               <th style="width: 10%;">Peça</th>
               <th style="width: 15%;">Qtd</th>
-              <th style="width: 25%;">Larg. (${cutState.unit})</th>
-              <th style="width: 25%;">Alt. (${cutState.unit})</th>
-              <th style="width: 25%;">Fita</th>
+              <th style="width: 22%;">Larg. (${cutState.unit})</th>
+              <th style="width: 22%;">Alt. (${cutState.unit})</th>
+              <th style="width: 31%;">Fita</th>
             </tr>
           </thead>
           <tbody id="cut-tbody">
@@ -428,31 +428,11 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td style="padding: 0.5rem; text-align: center;">
         <div class="fita-visual-row">
-          
-          <!-- C1 (Topo - Largura) -->
-          <div class="fita-box-item">
-            <button type="button" class="fita-bar-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Largura)"></button>
-            <div class="fita-square"><span>C1</span></div>
-          </div>
-
-          <!-- C2 (Base - Largura) -->
-          <div class="fita-box-item">
-            <div class="fita-square"><span>C2</span></div>
-            <button type="button" class="fita-bar-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Largura)"></button>
-          </div>
-
-          <!-- L1 (Esquerda - Altura) -->
-          <div class="fita-box-item" style="flex-direction: row;">
-            <button type="button" class="fita-bar-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Altura)"></button>
-            <div class="fita-square"><span>L1</span></div>
-          </div>
-
-          <!-- L2 (Direita - Altura) -->
-          <div class="fita-box-item" style="flex-direction: row;">
-            <div class="fita-square"><span>L2</span></div>
-            <button type="button" class="fita-bar-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Altura)"></button>
-          </div>
-
+          <button type="button" class="fita-bar fita-bar-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (C1)"></button>
+          <button type="button" class="fita-bar fita-bar-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (L1)"></button>
+          <div class="fita-square"><span>C1</span></div>
+          <button type="button" class="fita-bar fita-bar-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (L2)"></button>
+          <button type="button" class="fita-bar fita-bar-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (C2)"></button>
         </div>
       </td>
     </tr>
@@ -1248,8 +1228,9 @@ document.addEventListener('click', async (e) => {
   if (action === 'set-unit') {
     cutState.unit = target.dataset.unit;
     document.querySelectorAll('.unit-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.unit === cutState.unit));
-    document.querySelectorAll('th')[2].textContent = `Larg. (${cutState.unit})`;
-    document.querySelectorAll('th')[3].textContent = `Alt. (${cutState.unit})`;
+    const ths = document.querySelectorAll('.cut-table th');
+    if (ths[2]) ths[2].textContent = `Larg. (${cutState.unit})`;
+    if (ths[3]) ths[3].textContent = `Alt. (${cutState.unit})`;
     return;
   }
 });
