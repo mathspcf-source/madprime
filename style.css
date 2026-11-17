@@ -879,6 +879,51 @@ body:has(.login-wrapper) #app {
 .fita-piece .edge-left::after   { left: 0;   top: 0; bottom: 0; width: 5px; }
 .fita-piece .edge-right::after  { right: 0;  top: 0; bottom: 0; width: 5px; }
 
+/* FITA - RESPONSIVO (celular e desktop) */
+/* Desktop / tablet: quatro quadradinhos em uma linha, coluna da fita mais larga */
+@media (min-width: 768px) {
+  .cut-table th:nth-child(1) { width: 8% !important; }
+  .cut-table th:nth-child(2) { width: 12% !important; }
+  .cut-table th:nth-child(3) { width: 20% !important; }
+  .cut-table th:nth-child(4) { width: 20% !important; }
+  .cut-table th:nth-child(5) { width: 40% !important; }
+  .fita-container { gap: 12px; flex-wrap: nowrap; }
+  .fita-piece { width: 36px; height: 36px; }
+  .fita-title { font-size: 12px; }
+}
+/* Celular: quadradinhos em grade 2x2 (A1 A2 / L1 L2) para caber na coluna */
+@media (max-width: 767px) {
+  .cut-table th:nth-child(1) { width: 9% !important; }
+  .cut-table th:nth-child(2) { width: 15% !important; }
+  .cut-table th:nth-child(3) { width: 22% !important; }
+  .cut-table th:nth-child(4) { width: 22% !important; }
+  .cut-table th:nth-child(5) { width: 32% !important; }
+  .cut-table td:nth-child(5) { padding: 0.5rem 0.25rem !important; }
+  .fita-container {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    gap: 12px;
+    justify-content: center;
+    justify-items: center;
+  }
+  .fita-piece { width: 30px; height: 30px; }
+  .fita-title { font-size: 10px; }
+  /* área de toque um pouco maior para o dedo */
+  .fita-piece .edge-top, .fita-piece .edge-bottom { height: 16px; }
+  .fita-piece .edge-left, .fita-piece .edge-right { width: 16px; }
+  .fita-piece .edge-top { top: -8px; }
+  .fita-piece .edge-bottom { bottom: -8px; }
+  .fita-piece .edge-left { left: -8px; }
+  .fita-piece .edge-right { right: -8px; }
+  .cut-table th { font-size: 0.65rem; padding: 0.6rem 0.2rem; }
+  .cut-table input { padding: 0.6rem 0.1rem; font-size: 0.85rem; }
+}
+/* Telas muito pequenas */
+@media (max-width: 360px) {
+  .fita-container { gap: 10px; }
+  .fita-piece { width: 28px; height: 28px; }
+}
+
 /* Fullscreen Modal Override */
 .modal.fullscreen {
   max-width: 100%;
