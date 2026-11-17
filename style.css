@@ -812,82 +812,69 @@ body:has(.login-wrapper) #app {
 .cut-table input::placeholder { color: var(--text-secondary); opacity: 0.3; }
 
 /* ============================================================
-   FITA VISUAL — GRID 3x3 (CORRIGIDO)
+   FITA VISUAL — 4 QUADRADOS LADO A LADO (ESTILO IMAGEM)
    ============================================================ */
 .fita-visual-row {
-  display: grid;
-  grid-template-columns: 6px 26px 6px;
-  grid-template-rows: 6px 26px 6px;
+  display: flex;
   align-items: center;
-  justify-items: center;
   justify-content: center;
-  margin: 0 auto;
-  width: fit-content;
-  gap: 0;
+  gap: 8px;
 }
 
-/* Posicionamento no grid */
-.fita-bar-top    { grid-column: 2; grid-row: 1; }
-.fita-bar-left   { grid-column: 1; grid-row: 2; }
-.fita-square     { grid-column: 2; grid-row: 2; }
-.fita-bar-right  { grid-column: 3; grid-row: 2; }
-.fita-bar-bottom { grid-column: 2; grid-row: 3; }
+.fita-box-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+}
 
-/* Quadrado central */
 .fita-square {
   width: 26px;
   height: 26px;
   border: 1px dashed #4a5568;
-  border-radius: 3px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.03);
+  box-sizing: border-box;
 }
 
 .fita-square span {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   color: #a0aec0;
   user-select: none;
-  line-height: 1;
 }
 
-/* Barras de Fita — base */
-.fita-bar {
+.fita-bar-top, .fita-bar-bottom, .fita-bar-left, .fita-bar-right {
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
   border-radius: 2px;
 }
 
-/* Dimensões das barras */
-.fita-bar-top,
-.fita-bar-bottom {
-  width: 26px;
-  height: 6px;
-}
-.fita-bar-left,
-.fita-bar-right {
+.fita-bar-left, .fita-bar-right {
   width: 6px;
   height: 26px;
 }
 
-/* Hover / toque */
-.fita-bar-top:hover,
-.fita-bar-bottom:hover,
-.fita-bar-left:hover,
-.fita-bar-right:hover {
+.fita-bar-top, .fita-bar-bottom {
+  width: 26px;
+  height: 6px;
+}
+
+.fita-bar-top:hover, .fita-bar-bottom:hover, .fita-bar-left:hover, .fita-bar-right:hover {
   background: rgba(229, 62, 62, 0.3);
 }
 
-/* Estado ativo (fita aplicada) */
-.fita-bar-top.active,
-.fita-bar-bottom.active,
-.fita-bar-left.active,
-.fita-bar-right.active {
+.fita-bar-left.active, .fita-bar-right.active {
+  background: #e53e3e;
+}
+
+.fita-bar-top.active, .fita-bar-bottom.active {
   background: #e53e3e;
 }
 
