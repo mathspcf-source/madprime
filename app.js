@@ -421,36 +421,36 @@ function renderCutPlanModal() {
 function renderCutRow(item, idx) {
   const isEmpty = !item.height && !item.width;
   return `
-    <tr data-cut-row="${idx}" style="${isEmpty ? 'background: rgba(255,255,255,0.02);' : ''}">
+    <tr data-cut-row="${idx}" style="${isEmpty ? 'background: rgba(255,255,255,0.02);' : ''} height: 60px;">
       <td style="text-align:center; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">${idx + 1}</td>
       <td><input type="number" class="input-qty" data-cut-field="qty" data-idx="${idx}" value="${item.qty}" min="1" placeholder="1"></td>
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
-      <td>
-        <div style="display: flex; align-items: center; justify-content: center; position: relative; padding: 1rem 0;">
+      <td style="vertical-align: middle;">
+        <div style="display: flex; align-items: center; justify-content: center; position: relative; width: 100%; height: 100%;">
 
           <!-- L1 (Esquerda) -->
-          <div style="display: flex; align-items: center; gap: 2px; margin-right: 2px;">
-            <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L1</span>
-            <div style="width: 8px; height: 1px; background: var(--text-secondary);"></div>
+          <div style="display: flex; align-items: center; gap: 2px; margin-right: 4px;">
+            <span style="font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L1</span>
+            <div style="width: 6px; height: 1px; background: var(--text-secondary);"></div>
           </div>
 
-          <!-- Quadrado Menor (24x24) -->
-          <div class="piece-visual" style="width: 24px; height: 24px; position: relative; margin: 0; flex-shrink: 0;">
-
+          <!-- Quadrado Central -->
+          <div class="piece-visual" style="width: 24px; height: 24px; position: relative; flex-shrink: 0; margin: 0 8px;">
+            
             <!-- A1 (Topo) -->
-            <div style="position: absolute; top: -18px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
-              <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A1</span>
-              <div style="width: 1px; height: 7px; background: var(--text-secondary);"></div>
+            <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
+              <span style="font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A1</span>
+              <div style="width: 1px; height: 4px; background: var(--text-secondary);"></div>
             </div>
 
             <!-- A2 (Base) -->
-            <div style="position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
-              <div style="width: 1px; height: 7px; background: var(--text-secondary);"></div>
-              <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A2</span>
+            <div style="position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
+              <div style="width: 1px; height: 4px; background: var(--text-secondary);"></div>
+              <span style="font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A2</span>
             </div>
 
-            <!-- Botões das Bordas (Fita) -->
+            <!-- Botões das Bordas -->
             <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="A1 (Topo)"></button>
             <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="A2 (Base)"></button>
             <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="L1 (Esquerda)"></button>
@@ -458,9 +458,9 @@ function renderCutRow(item, idx) {
           </div>
 
           <!-- L2 (Direita) -->
-          <div style="display: flex; align-items: center; gap: 2px; margin-left: 2px;">
-            <div style="width: 8px; height: 1px; background: var(--text-secondary);"></div>
-            <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L2</span>
+          <div style="display: flex; align-items: center; gap: 2px; margin-left: 4px;">
+            <div style="width: 6px; height: 1px; background: var(--text-secondary);"></div>
+            <span style="font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L2</span>
           </div>
 
         </div>
@@ -739,33 +739,33 @@ function buildCutPlanHTML(c) {
         </thead>
         <tbody>
           ${c.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
+            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6; height: 60px;">
               <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
               <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
-              <td style="text-align:center; padding:12px 10px;">
-                <div style="display:flex; align-items:center; justify-content:center; position:relative; padding:8px 0;">
+              <td style="text-align:center; padding:12px 10px; vertical-align: middle;">
+                <div style="display:flex; align-items:center; justify-content:center; position:relative; width:100%; height:100%;">
 
                   <!-- L1 (Esquerda) -->
-                  <div style="display:flex; align-items:center; gap:1px; margin-right:2px;">
-                    <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">L1</span>
+                  <div style="display:flex; align-items:center; gap:1px; margin-right:4px;">
+                    <span style="font-size:7px; font-weight:700; color:#000; line-height:1;">L1</span>
                     <div style="width:6px; height:1px; background:#000;"></div>
                   </div>
 
                   <!-- Quadrado 20x20 -->
-                  <div style="width:20px; height:20px; position:relative; border:1px solid #ccc; flex-shrink:0;">
+                  <div style="width:20px; height:20px; position:relative; border:1px solid #ccc; flex-shrink:0; margin: 0 6px;">
 
                     <!-- A1 (Topo) -->
                     <div style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
-                      <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">A1</span>
-                      <div style="width:1px; height:5px; background:#000;"></div>
+                      <span style="font-size:7px; font-weight:700; color:#000; line-height:1;">A1</span>
+                      <div style="width:1px; height:4px; background:#000;"></div>
                     </div>
 
                     <!-- A2 (Base) -->
                     <div style="position:absolute; bottom:-12px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
-                      <div style="width:1px; height:5px; background:#000;"></div>
-                      <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">A2</span>
+                      <div style="width:1px; height:4px; background:#000;"></div>
+                      <span style="font-size:7px; font-weight:700; color:#000; line-height:1;">A2</span>
                     </div>
 
                     ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
@@ -775,9 +775,9 @@ function buildCutPlanHTML(c) {
                   </div>
 
                   <!-- L2 (Direita) -->
-                  <div style="display:flex; align-items:center; gap:1px; margin-left:2px;">
+                  <div style="display:flex; align-items:center; gap:1px; margin-left:4px;">
                     <div style="width:6px; height:1px; background:#000;"></div>
-                    <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">L2</span>
+                    <span style="font-size:7px; font-weight:700; color:#000; line-height:1;">L2</span>
                   </div>
 
                 </div>
