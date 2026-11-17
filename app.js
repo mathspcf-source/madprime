@@ -1,6 +1,6 @@
 let currentPage = 'dashboard';
 let budgetState = { cart: [], category: 'all', search: '', editId: null, editingNumber: '', mobileTab: 'catalog' };
-let cutState = { editId: null, editNumber: '', items: [], unit: 'cm', materialPadrao: 'MDF Branco 18mm', name: '' };
+let cutState = { editId: null, editNumber: '', items: [], unit: 'cm', materialPadrao: 'MDF Branco 15mm', name: '' };
 let materialFilter = 'all';
 
 // ============================================================
@@ -336,7 +336,7 @@ function openNewCutPlanModal() {
   cutState.editId = null;
   cutState.editNumber = '';
   cutState.unit = 'cm';
-  cutState.materialPadrao = 'MDF Branco 18mm';
+  cutState.materialPadrao = 'MDF Branco 15mm';
   cutState.name = '';
   cutState.items = Array.from({ length: 100 }, () => ({
     id: uid('item'), qty: '', height: '', width: '', top: false, bottom: false, left: false, right: false, obs: ''
@@ -351,7 +351,7 @@ function openEditCutPlanModal(planId) {
   cutState.editId = c.id;
   cutState.editNumber = c.number;
   cutState.unit = c.unit || 'cm';
-  cutState.materialPadrao = c.material_padrao || 'MDF Branco 18mm';
+  cutState.materialPadrao = c.material_padrao || 'MDF Branco 15mm';
   cutState.name = c.name || '';
   
   const savedItems = c.items.map(i => ({ ...i }));
@@ -366,6 +366,10 @@ function openEditCutPlanModal(planId) {
 function renderCutPlanModal() {
   const isEdit = !!cutState.editId;
   const materials = window.db.materials.filter(m => m.category === 'MDFs' && m.active);
+  // Se o material padrão não existe no cadastro (ex.: valor antigo), usa o primeiro MDF cadastrado
+  if (materials.length && !materials.some(m => m.name === cutState.materialPadrao)) {
+    cutState.materialPadrao = materials[0].name;
+  }
 
   openModal(isEdit ? `Editar ${cutState.editNumber}` : 'Novo Plano de Corte', `
     <div class="flex flex-col gap-2" style="height: 100%;">
