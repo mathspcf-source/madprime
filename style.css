@@ -888,40 +888,40 @@ body:has(.login-wrapper) #app {
   .cut-table th:nth-child(4) { width: 20% !important; }
   .cut-table th:nth-child(5) { width: 40% !important; }
   .fita-container { gap: 12px; flex-wrap: nowrap; }
+  .fita-box { flex: 0 0 auto; }
   .fita-piece { width: 36px; height: 36px; }
   .fita-title { font-size: 12px; }
 }
-/* Celular: quadradinhos em grade 2x2 (A1 A2 / L1 L2) para caber na coluna */
+/* Celular: quadradinhos em linha reta (A1 A2 L1 L2), menores, com a coluna da fita mais larga */
 @media (max-width: 767px) {
-  .cut-table th:nth-child(1) { width: 9% !important; }
-  .cut-table th:nth-child(2) { width: 15% !important; }
-  .cut-table th:nth-child(3) { width: 22% !important; }
-  .cut-table th:nth-child(4) { width: 22% !important; }
-  .cut-table th:nth-child(5) { width: 32% !important; }
-  .cut-table td:nth-child(5) { padding: 0.5rem 0.25rem !important; }
-  .fita-container {
-    display: grid;
-    grid-template-columns: repeat(2, max-content);
-    gap: 12px;
-    justify-content: center;
-    justify-items: center;
-  }
-  .fita-piece { width: 30px; height: 30px; }
-  .fita-title { font-size: 10px; }
-  /* área de toque um pouco maior para o dedo */
-  .fita-piece .edge-top, .fita-piece .edge-bottom { height: 16px; }
-  .fita-piece .edge-left, .fita-piece .edge-right { width: 16px; }
-  .fita-piece .edge-top { top: -8px; }
-  .fita-piece .edge-bottom { bottom: -8px; }
-  .fita-piece .edge-left { left: -8px; }
-  .fita-piece .edge-right { right: -8px; }
+  /* larguras em px: a fita sempre aparece inteira; se a tela for estreita, a tabela rola na horizontal */
+  .cut-table { min-width: 360px; }
+  .cut-table th:nth-child(1) { width: 34px !important; }
+  .cut-table th:nth-child(2) { width: 50px !important; }
+  .cut-table th:nth-child(3) { width: 62px !important; }
+  .cut-table th:nth-child(4) { width: 62px !important; }
+  .cut-table th:nth-child(5) { width: 152px !important; }
+  .cut-table td:nth-child(5) { padding: 0.5rem 0.2rem !important; overflow: visible; }
+  .fita-container { display: flex; flex-wrap: nowrap; gap: 10px; justify-content: center; align-items: center; width: max-content; margin: 0 auto; }
+  .fita-box { flex: 0 0 auto; }
+  .fita-piece { width: 26px; height: 26px; border-width: 2px; flex: 0 0 auto; }
+  .fita-title { font-size: 9px; }
+  /* área de toque das laterais, sem invadir o quadradinho vizinho */
+  .fita-piece .edge-top, .fita-piece .edge-bottom { height: 14px; }
+  .fita-piece .edge-left, .fita-piece .edge-right { width: 12px; }
+  .fita-piece .edge-top { top: -7px; }
+  .fita-piece .edge-bottom { bottom: -7px; }
+  .fita-piece .edge-left { left: -6px; }
+  .fita-piece .edge-right { right: -6px; }
+  .fita-piece .edge-top::after, .fita-piece .edge-bottom::after { height: 4px; }
+  .fita-piece .edge-left::after, .fita-piece .edge-right::after { width: 4px; }
   .cut-table th { font-size: 0.65rem; padding: 0.6rem 0.2rem; }
   .cut-table input { padding: 0.6rem 0.1rem; font-size: 0.85rem; }
 }
 /* Telas muito pequenas */
 @media (max-width: 360px) {
-  .fita-container { gap: 10px; }
-  .fita-piece { width: 28px; height: 28px; }
+  .fita-container { gap: 8px; }
+  .fita-piece { width: 24px; height: 24px; }
 }
 
 /* Fullscreen Modal Override */
