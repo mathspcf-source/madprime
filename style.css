@@ -1007,6 +1007,53 @@ body:has(.login-wrapper) #app {
 }
 .modal-close:hover { background: var(--card-hover); color: var(--text); }
 
+/* Botão Voltar do cabeçalho do modal */
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), border-color var(--transition);
+}
+.btn-back svg { width: 16px; height: 16px; }
+.btn-back:hover { background: var(--card-hover); border-color: var(--primary); }
+
+/* Seletor de unidade (mm / cm) */
+.unit-toggle {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 3px;
+  height: 38px;
+  box-sizing: border-box;
+}
+.unit-btn {
+  min-width: 44px;
+  padding: 0 0.8rem;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.unit-btn:hover { color: var(--text); }
+.unit-btn.active { background: var(--primary); color: #fff; }
+
 #toast-container {
   position: fixed;
   top: 20px;
