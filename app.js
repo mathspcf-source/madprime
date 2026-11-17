@@ -427,14 +427,26 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td>
-        <div class="piece-visual">
-          <span style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:8px; color:var(--text-secondary); opacity:0.6; pointer-events:none; font-weight:600; z-index:1;">L</span>
-          <span style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); font-size:6px; color:var(--text-secondary); opacity:0.4; pointer-events:none; z-index:1;">A</span>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.3rem; position: relative;">
+          <!-- Legenda Externa L (Largura) -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 1px;">
+            <span style="font-size: 8px; color: var(--text-secondary); font-weight: 700; line-height: 1;">L</span>
+            <div style="width: 12px; height: 1px; background: var(--text-secondary); opacity: 0.6;"></div>
+          </div>
           
-          <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Topo"></button>
-          <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Base"></button>
-          <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Esquerda"></button>
-          <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Direita"></button>
+          <!-- Quadrado da Fita -->
+          <div class="piece-visual" style="margin: 0;">
+            <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Topo"></button>
+            <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Base"></button>
+            <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Esquerda"></button>
+            <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Direita"></button>
+          </div>
+
+          <!-- Legenda Externa A (Altura) -->
+          <div style="display: flex; align-items: center; gap: 1px;">
+            <div style="width: 1px; height: 12px; background: var(--text-secondary); opacity: 0.6;"></div>
+            <span style="font-size: 8px; color: var(--text-secondary); font-weight: 700; line-height: 1;">A</span>
+          </div>
         </div>
       </td>
     </tr>
@@ -483,7 +495,7 @@ function openCutPlanViewModal(planId) {
 }
 
 // ============================================================
-// VISUALIZAR ORÇAMENTO (CORRIGIDO)
+// VISUALIZAR ORÇAMENTO
 // ============================================================
 function openBudgetViewModal(budgetId) {
   const b = window.db.budgets.find(x => x.id === budgetId);
@@ -717,13 +729,21 @@ function buildCutPlanHTML(c) {
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
               <td style="text-align:center; padding:12px 10px;">
-                <div style="display:inline-block; width:30px; height:30px; position:relative; border:1px solid #ccc;">
-                  <span style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:8px; color:#ccc; font-weight:600; z-index:1;">L</span>
-                  <span style="position:absolute; bottom:1px; left:50%; transform:translateX(-50%); font-size:6px; color:#ccc; z-index:1;">A</span>
-                  ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
-                  ${i.bottom ? '<div style="position:absolute; bottom:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
-                  ${i.left ? '<div style="position:absolute; top:0; bottom:0; left:0; width:3px; background:#000; z-index:2;"></div>' : ''}
-                  ${i.right ? '<div style="position:absolute; top:0; bottom:0; right:0; width:3px; background:#000; z-index:2;"></div>' : ''}
+                <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+                  <div style="display:flex; flex-direction:column; align-items:center;">
+                    <span style="font-size:8px; color:#000; font-weight:700; line-height:1;">L</span>
+                    <div style="width:10px; height:1px; background:#000;"></div>
+                  </div>
+                  <div style="display:inline-block; width:30px; height:30px; position:relative; border:1px solid #ccc;">
+                    ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
+                    ${i.bottom ? '<div style="position:absolute; bottom:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
+                    ${i.left ? '<div style="position:absolute; top:0; bottom:0; left:0; width:3px; background:#000; z-index:2;"></div>' : ''}
+                    ${i.right ? '<div style="position:absolute; top:0; bottom:0; right:0; width:3px; background:#000; z-index:2;"></div>' : ''}
+                  </div>
+                  <div style="display:flex; align-items:center; gap:2px;">
+                    <div style="width:1px; height:10px; background:#000;"></div>
+                    <span style="font-size:8px; color:#000; font-weight:700; line-height:1;">A</span>
+                  </div>
                 </div>
               </td>
             </tr>`).join('')}
