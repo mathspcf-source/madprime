@@ -429,18 +429,18 @@ function renderCutRow(item, idx) {
       <td style="padding: 0.5rem;">
         <div class="fita-container">
           
-          <!-- Quatro quadradinhos: C1/C2 (comprimento) e L1/L2 (largura) -->
+          <!-- Quatro quadradinhos: A1/A2 (altura) e L1/L2 (largura) -->
           <div class="fita-box">
             <div class="fita-piece">
-              <span class="fita-title">C1</span>
-              <button type="button" class="edge-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita no Comprimento 1 (Esquerda)"></button>
+              <span class="fita-title">A1</span>
+              <button type="button" class="edge-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Altura 1 (Esquerda)"></button>
             </div>
           </div>
 
           <div class="fita-box">
             <div class="fita-piece">
-              <span class="fita-title">C2</span>
-              <button type="button" class="edge-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita no Comprimento 2 (Direita)"></button>
+              <span class="fita-title">A2</span>
+              <button type="button" class="edge-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Altura 2 (Direita)"></button>
             </div>
           </div>
 
