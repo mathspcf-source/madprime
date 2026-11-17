@@ -427,21 +427,43 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td>
-        <div class="piece-visual" style="position: relative; overflow: hidden; margin: 0 auto; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; padding: 0.6rem 0;">
           
-          <!-- Linha e Letra L (Horizontal = Largura) -->
-          <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--text-secondary); opacity: 0.3; pointer-events: none;"></div>
-          <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 8px; color: var(--text-secondary); font-weight: 700; z-index: 1; background: var(--bg); padding: 0 2px;">L</span>
-          
-          <!-- Linha e Letra A (Vertical = Altura) -->
-          <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--text-secondary); opacity: 0.3; pointer-events: none;"></div>
-          <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 8px; color: var(--text-secondary); font-weight: 700; z-index: 1; background: var(--bg); padding: 0 2px; margin-top: 12px;">A</span>
+          <!-- L1 (Esquerda / Largura) -->
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0;">
+            <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L1</span>
+            <div style="width: 8px; height: 1px; background: var(--text-secondary); margin-top: 2px;"></div>
+          </div>
 
-          <!-- Botões das Bordas (Fita) -->
-          <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Topo (Largura)"></button>
-          <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Base (Largura)"></button>
-          <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Esquerda (Altura)"></button>
-          <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Direita (Altura)"></button>
+          <!-- Quadrado Menor (24x24) -->
+          <div class="piece-visual" style="width: 24px; height: 24px; position: relative; margin: 0; flex-shrink: 0;">
+            <!-- L2 (Topo / Largura) -->
+            <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
+              <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L2</span>
+              <div style="width: 1px; height: 6px; background: var(--text-secondary);"></div>
+            </div>
+
+            <!-- A1 (Direita / Altura) -->
+            <div style="position: absolute; right: -16px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 1px;">
+              <div style="width: 6px; height: 1px; background: var(--text-secondary);"></div>
+              <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A1</span>
+            </div>
+
+            <!-- A2 (Base / Altura) -->
+            <div style="position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
+              <div style="width: 1px; height: 6px; background: var(--text-secondary);"></div>
+              <span style="font-size: 8px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A2</span>
+            </div>
+
+            <!-- Botões das Bordas (Fita) -->
+            <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="L2 (Topo)"></button>
+            <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="A2 (Base)"></button>
+            <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="L1 (Esquerda)"></button>
+            <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="A1 (Direita)"></button>
+          </div>
+
+          <!-- Espaçamento para não colar na borda direita -->
+          <div style="width: 14px;"></div>
         </div>
       </td>
     </tr>
@@ -466,7 +488,7 @@ function openCutPlanViewModal(planId) {
         </div>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Dimensões:</strong> ${item.width}${c.unit || 'cm'} (L) x ${item.height}${c.unit || 'cm'} (A)</p>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong> 
-          ${item.top ? 'Topo ' : ''}${item.bottom ? 'Base ' : ''}${item.left ? 'Esq ' : ''}${item.right ? 'Dir' : ''}
+          ${item.top ? 'L2 ' : ''}${item.bottom ? 'A2 ' : ''}${item.left ? 'L1 ' : ''}${item.right ? 'A1' : ''}
           ${!item.top && !item.bottom && !item.left && !item.right ? 'Nenhuma' : ''}
         </p>
       </div>
@@ -724,19 +746,41 @@ function buildCutPlanHTML(c) {
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
               <td style="text-align:center; padding:12px 10px;">
-                <div style="display:inline-block; width:30px; height:30px; position:relative; border:1px solid #ccc;">
-                  <!-- Linha e Letra L (Horizontal = Largura) no PDF -->
-                  <div style="position:absolute; top:50%; left:0; right:0; height:1px; background:#ccc; opacity:0.5; z-index:1;"></div>
-                  <span style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:6px; color:#000; font-weight:700; z-index:2; background:#fff; padding:0 1px;">L</span>
-                  
-                  <!-- Linha e Letra A (Vertical = Altura) no PDF -->
-                  <div style="position:absolute; top:0; bottom:0; left:50%; width:1px; background:#ccc; opacity:0.5; z-index:1;"></div>
-                  <span style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:6px; color:#000; font-weight:700; z-index:2; background:#fff; padding:0 1px; margin-top:10px;">A</span>
+                <div style="display:flex; align-items:center; justify-content:center; gap:4px; position:relative;">
+                  <!-- L1 (Esquerda) -->
+                  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0;">
+                    <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">L1</span>
+                    <div style="width:6px; height:1px; background:#000; margin-top:1px;"></div>
+                  </div>
 
-                  ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000; z-index:3;"></div>' : ''}
-                  ${i.bottom ? '<div style="position:absolute; bottom:0; left:0; right:0; height:3px; background:#000; z-index:3;"></div>' : ''}
-                  ${i.left ? '<div style="position:absolute; top:0; bottom:0; left:0; width:3px; background:#000; z-index:3;"></div>' : ''}
-                  ${i.right ? '<div style="position:absolute; top:0; bottom:0; right:0; width:3px; background:#000; z-index:3;"></div>' : ''}
+                  <!-- Quadrado Menor (20x20 para o PDF) -->
+                  <div style="width:20px; height:20px; position:relative; border:1px solid #ccc; flex-shrink:0;">
+                    <!-- L2 (Topo) -->
+                    <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
+                      <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">L2</span>
+                      <div style="width:1px; height:4px; background:#000;"></div>
+                    </div>
+
+                    <!-- A1 (Direita) -->
+                    <div style="position:absolute; right:-12px; top:50%; transform:translateY(-50%); display:flex; align-items:center; gap:1px;">
+                      <div style="width:4px; height:1px; background:#000;"></div>
+                      <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">A1</span>
+                    </div>
+
+                    <!-- A2 (Base) -->
+                    <div style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
+                      <div style="width:1px; height:4px; background:#000;"></div>
+                      <span style="font-size:6px; font-weight:700; color:#000; line-height:1;">A2</span>
+                    </div>
+
+                    ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
+                    ${i.bottom ? '<div style="position:absolute; bottom:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
+                    ${i.left ? '<div style="position:absolute; top:0; bottom:0; left:0; width:3px; background:#000; z-index:2;"></div>' : ''}
+                    ${i.right ? '<div style="position:absolute; top:0; bottom:0; right:0; width:3px; background:#000; z-index:2;"></div>' : ''}
+                  </div>
+
+                  <!-- Espaçamento direito para balancear -->
+                  <div style="width:12px;"></div>
                 </div>
               </td>
             </tr>`).join('')}
