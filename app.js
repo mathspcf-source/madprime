@@ -1,1164 +1,1319 @@
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+let currentPage = 'dashboard';
+let budgetState = { cart: [], category: 'all', search: '', editId: null, editingNumber: '', mobileTab: 'catalog' };
+let cutState = { editId: null, editNumber: '', items: [], unit: 'cm', materialPadrao: 'MDF Branco 18mm', name: '' };
+let materialFilter = 'all';
 
-:root {
-  --bg: #0a0e16;
-  --card: #131926;
-  --card-hover: #1a2232;
-  --primary: #4d7cfe;
-  --primary-hover: #3b68e0;
-  --green: #22c58b;
-  --red: #ef4056;
-  --yellow: #f5a524;
-  --text: #eef2f6;
-  --text-secondary: #8f9bb3;
-  --border: #1f2a3a;
-  --radius: 14px;
-  --radius-sm: 10px;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --transition: 0.2s ease;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+// ============================================================
+// FUNÇÕES AUXILIARES
+// ============================================================
+function uid(prefix = 'id') { return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
+function formatCurrency(v) { return 'R$ ' + Number(v).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+function formatDate(iso) { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+function escapeHtml(str) { if (!str) return ''; return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+function formatWA(num) {
+  if (!num) return '';
+  const d = String(num).replace(/\D/g, '');
+  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return num;
 }
 
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type=number] { -moz-appearance: textfield; }
-
-html, body {
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
+function openModal(title, contentHTML, isFullscreen = false) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="modal-overlay" data-action="close-modal-overlay">
+      <div class="modal ${isFullscreen ? 'fullscreen' : ''}" data-modal-content>
+        <div class="modal-header">
+          <button type="button" class="btn-back" data-action="close-modal"><i data-lucide="arrow-left"></i> Voltar</button>
+          <h2>${escapeHtml(title)}</h2>
+          <button type="button" class="modal-close" data-action="close-modal"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">${contentHTML}</div>
+      </div>
+    </div>`;
+  lucide.createIcons();
 }
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+function navigate(page) { currentPage = page; if (page === 'materials') materialFilter = 'all'; renderApp(); }
 
-body { display: flex; flex-direction: column; min-height: 100vh; }
-
-h1, h2, h3, h4 { font-weight: 600; line-height: 1.2; }
-h1 { font-size: 1.7rem; }
-h2 { font-size: 1.3rem; }
-h3 { font-size: 1.05rem; }
-
-.text-secondary { color: var(--text-secondary); }
-.text-green { color: var(--green); }
-.text-red { color: var(--red); }
-.text-yellow { color: var(--yellow); }
-.text-primary { color: var(--primary); }
-.fw-600 { font-weight: 600; }
-
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.gap-1 { gap: 0.5rem; }
-.gap-2 { gap: 1rem; }
-.gap-3 { gap: 1.5rem; }
-.mt-1 { margin-top: 0.5rem; }
-.mt-2 { margin-top: 1rem; }
-.mb-1 { margin-bottom: 0.5rem; }
-.mb-2 { margin-bottom: 1rem; }
-.p-2 { padding: 1rem; }
-.w-full { width: 100%; }
-.text-center { text-align: center; }
-.hidden { display: none !important; }
-.truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 1.25rem;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+function renderApp() {
+  const app = document.getElementById('app');
+  app.innerHTML = renderShell();
+  lucide.createIcons();
 }
 
-.card-hover:hover { background: var(--card-hover); transition: background var(--transition); }
+// ============================================================
+// SHELL
+// ============================================================
+function renderShell() {
+  const isAdmin = window.isAdminMode;
+  const navItems = [
+    { page: 'dashboard', icon: 'layout-dashboard', label: 'Início' },
+    { page: 'budgets', icon: 'file-text', label: 'Orçamentos' },
+    { page: 'cutting', icon: 'scissors', label: 'Cortes' },
+    ...(isAdmin ? [{ page: 'clients', icon: 'users', label: 'Clientes' }, { page: 'materials', icon: 'package', label: 'Materiais' }] : []),
+    { page: 'settings', icon: 'settings', label: isAdmin ? 'Config.' : 'Perfil' }
+  ];
+  const content = renderPageContent(isAdmin);
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1.2rem;
-  border-radius: var(--radius-sm);
-  border: none;
-  font-weight: 500;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all var(--transition);
-  font-family: 'Inter', sans-serif;
-  white-space: nowrap;
-  background: transparent;
-  color: var(--text);
-}
-.btn svg { width: 18px; height: 18px; flex-shrink: 0; }
-.btn-primary { background: var(--primary); color: #fff; }
-.btn-primary:hover { background: var(--primary-hover); }
-.btn-green { background: var(--green); color: #0a0e16; }
-.btn-green:hover { filter: brightness(1.1); }
-.btn-red { background: var(--red); color: #fff; }
-.btn-red:hover { filter: brightness(1.1); }
-.btn-yellow { background: var(--yellow); color: #0a0e16; }
-.btn-yellow:hover { filter: brightness(1.1); }
-.btn-outline { border: 1px solid var(--border); background: transparent; color: var(--text); }
-.btn-outline:hover { background: var(--card-hover); }
-.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
-.btn-sm svg { width: 15px; height: 15px; }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.btn-icon {
-  padding: 0.5rem;
-  border-radius: 50%;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.btn-icon:hover { background: var(--card-hover); color: var(--text); }
-
-.input, .select, .textarea {
-  width: 100%;
-  padding: 0.7rem 0.9rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-family: 'Inter', sans-serif;
-  font-size: 0.95rem;
-  transition: border var(--transition);
-}
-.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--primary); }
-.textarea { resize: vertical; min-height: 70px; }
-.select option { background: var(--card); }
-
-.label {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: 0.3rem;
+  return `
+    <header class="mobile-header">
+      <div class="logo"><i data-lucide="hammer"></i> MAD PRIME</div>
+      <button type="button" class="btn-icon" data-action="logout"><i data-lucide="log-out"></i></button>
+    </header>
+    <div class="flex" style="flex:1; min-height:0;">
+      <aside class="sidebar desktop-only">
+        <div class="logo"><i data-lucide="hammer"></i> MAD PRIME</div>
+        <nav class="sidebar-nav">
+          ${navItems.map(item => `
+            <button type="button" class="sidebar-item ${currentPage === item.page ? 'active' : ''}" data-action="navigate" data-page="${item.page}">
+              <i data-lucide="${item.icon}"></i> ${item.label}
+            </button>`).join('')}
+        </nav>
+        <div class="sidebar-footer">
+          <div class="flex items-center gap-1 mb-1" style="padding:0 0.5rem;">
+            <i data-lucide="user-circle" style="width:18px;height:18px;color:var(--text-secondary);"></i>
+            <span style="font-size:0.85rem;color:var(--text-secondary);">${escapeHtml(window.currentUser.name)}</span>
+          </div>
+          <button type="button" class="sidebar-item" data-action="logout"><i data-lucide="log-out"></i> Sair</button>
+          <div class="copyright" style="padding: 1rem 0 0 0; text-align: left; font-size: 0.65rem;">&copy; 2026 MAD PRIME</div>
+        </div>
+      </aside>
+      <main class="main-content">
+        ${content}
+        <div class="copyright mobile-only">&copy; 2026 MAD PRIME - Todos os direitos reservados.</div>
+      </main>
+    </div>
+    <nav class="bottom-nav mobile-only">
+      ${navItems.map(item => `
+        <button type="button" class="nav-item ${currentPage === item.page ? 'active' : ''}" data-action="navigate" data-page="${item.page}">
+          <i data-lucide="${item.icon}"></i><span>${item.label}</span>
+        </button>`).join('')}
+    </nav>`;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.7rem;
-  border-radius: 30px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-}
-.badge-pending { background: rgba(245, 165, 36, 0.15); color: var(--yellow); }
-.badge-approved { background: rgba(34, 197, 139, 0.15); color: var(--green); }
-.badge-refused { background: rgba(239, 64, 86, 0.15); color: var(--red); }
-
-.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-th, td { padding: 0.75rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); }
-th { color: var(--text-secondary); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.3px; }
-tr:last-child td { border-bottom: none; }
-
-#app { display: flex; flex-direction: column; min-height: 100vh; }
-
-.mobile-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(0.9rem + var(--safe-top)) 1.2rem 0.9rem;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.logo { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.15rem; color: var(--text); }
-.logo svg { color: var(--primary); width: 22px; height: 22px; }
-
-.main-content {
-  flex: 1;
-  padding: 1.2rem;
-  padding-bottom: calc(120px + var(--safe-bottom));
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-  overflow-y: auto;
-}
-
-.bottom-nav {
-  display: flex;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: var(--card);
-  border-top: 1px solid var(--border);
-  padding: 0.5rem 0.3rem calc(0.5rem + var(--safe-bottom));
-  justify-content: space-around;
-  z-index: 100;
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.3rem 0.5rem;
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  font-size: 0.65rem;
-  font-weight: 500;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  transition: all var(--transition);
-  min-width: 56px;
-}
-.nav-item svg { width: 22px; height: 22px; }
-.nav-item.active { color: var(--primary); }
-.nav-item.active svg { color: var(--primary); }
-
-.sidebar {
-  display: none;
-  flex-direction: column;
-  width: 240px;
-  background: var(--card);
-  border-right: 1px solid var(--border);
-  padding: 1.5rem 0.8rem;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-  gap: 1.5rem;
-  flex-shrink: 0;
-}
-.sidebar .logo { padding: 0 0.5rem; margin-bottom: 0.5rem; }
-.sidebar-nav { display: flex; flex-direction: column; gap: 0.3rem; }
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.7rem 1rem;
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  font-weight: 500;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  font-size: 0.95rem;
-  transition: all var(--transition);
-  width: 100%;
-  text-align: left;
-}
-.sidebar-item svg { width: 20px; height: 20px; }
-.sidebar-item:hover { background: var(--card-hover); color: var(--text); }
-.sidebar-item.active { background: rgba(77, 124, 254, 0.12); color: var(--primary); }
-
-.sidebar-footer { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); }
-
-@media (min-width: 900px) {
-  .mobile-header, .bottom-nav { display: none; }
-  .sidebar { display: flex; }
-  #app { flex-direction: row; }
-  .main-content { padding: 2rem 2.5rem; padding-bottom: 2rem; max-width: none; }
-  .mobile-only { display: none !important; }
-}
-@media (max-width: 899px) { .desktop-only { display: none !important; } }
-
-body:has(.login-wrapper) #app {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-
-.login-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 1.5rem;
-  background: radial-gradient(circle at 30% 20%, rgba(77, 124, 254, 0.08), transparent 60%);
-  width: 100%;
-}
-.login-card { width: 100%; max-width: 400px; padding: 2rem 1.8rem; }
-.login-card .logo { justify-content: center; margin-bottom: 0.5rem; }
-.login-card h1 { text-align: center; margin-bottom: 0.3rem; }
-.login-card .subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.9rem; }
-
-.login-tabs {
-  display: flex;
-  gap: 0.5rem;
-  background: var(--bg);
-  padding: 0.3rem;
-  border-radius: var(--radius-sm);
-  margin-bottom: 1.5rem;
-}
-.login-tab {
-  flex: 1;
-  padding: 0.5rem;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-  font-size: 0.9rem;
-}
-.login-tab.active { background: var(--primary); color: #fff; }
-
-.demo-hint {
-  margin-top: 1.5rem;
-  padding: 0.8rem;
-  background: rgba(77, 124, 254, 0.06);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  text-align: center;
-  border: 1px dashed var(--border);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.stat-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.stat-card .label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }
-.stat-card .value { font-size: 1.6rem; font-weight: 700; }
-.stat-card .value.green { color: var(--green); }
-.stat-card .value.yellow { color: var(--yellow); }
-.stat-card .value.primary { color: var(--primary); }
-
-.section-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-}
-
-.list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.9rem 1rem;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  margin-bottom: 0.6rem;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-}
-.list-item .info { flex: 1; min-width: 140px; }
-.list-item .info .title { font-weight: 500; }
-.list-item .info .sub { font-size: 0.8rem; color: var(--text-secondary); }
-.actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-
-/* ORÇAMENTO */
-.budget-grid { display: flex; flex-direction: column; gap: 1rem; height: 100%; flex: 1; overflow: hidden; }
-.catalog-panel, .cart-panel {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-  height: 100%;
-}
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1rem;
-  background: linear-gradient(180deg, rgba(77, 124, 254, 0.08), transparent);
-  border-bottom: 1px solid var(--border);
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-.panel-header h3 {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.92rem;
-  margin: 0;
-  white-space: nowrap;
-}
-.panel-header h3 svg { width: 16px; height: 16px; color: var(--primary); flex-shrink: 0; }
-.panel-header .count-badge {
-  font-size: 0.7rem;
-  padding: 0.18rem 0.55rem;
-  border-radius: 20px;
-  background: rgba(77, 124, 254, 0.15);
-  color: var(--primary);
-  font-weight: 600;
-  white-space: nowrap;
-}
-.catalog-filters {
-  padding: 0.7rem 0.8rem;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  flex-shrink: 0;
-}
-.search-box { position: relative; width: 100%; }
-.search-box .search-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-secondary);
-  pointer-events: none;
-  width: 15px;
-  height: 15px;
-}
-.search-box .input {
-  padding: 0.55rem 0.8rem 0.55rem 2.1rem;
-  font-size: 0.85rem;
-  background: var(--card);
-  border-radius: 9px;
-}
-.search-box .clear-search {
-  position: absolute;
-  right: 0.4rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0.2rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.search-box .clear-search:hover { background: var(--card-hover); color: var(--text); }
-.search-box .clear-search svg { width: 13px; height: 13px; }
-.category-chips {
-  display: flex;
-  gap: 0.4rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding: 0.1rem 0.05rem 0.2rem;
-  scroll-snap-type: x proximity;
-}
-.category-chips::-webkit-scrollbar { display: none; }
-.cat-chip {
-  flex-shrink: 0;
-  padding: 0.32rem 0.75rem;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text-secondary);
-  font-size: 0.72rem;
-  font-weight: 500;
-  line-height: 1.2;
-  cursor: pointer;
-  transition: all var(--transition);
-  white-space: nowrap;
-  scroll-snap-align: start;
-  display: inline-flex;
-  align-items: center;
-  height: 26px;
-}
-.cat-chip:hover { border-color: var(--primary); color: var(--text); }
-.cat-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
-.catalog-scroll {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0.35rem 0.15rem 0.35rem 0.35rem;
-  min-height: 0;
-}
-.catalog-scroll::-webkit-scrollbar { width: 5px; }
-.catalog-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-.catalog-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.65rem 0.7rem;
-  border-radius: var(--radius-sm);
-  gap: 0.5rem;
-  transition: background var(--transition);
-  border: 1px solid transparent;
-  min-width: 0;
-}
-.catalog-item:hover { background: var(--card); border-color: var(--border); }
-.catalog-item .info { flex: 1; min-width: 0; overflow: hidden; }
-.catalog-item .info .name {
-  font-weight: 500;
-  font-size: 0.86rem;
-  line-height: 1.3;
-  margin-bottom: 0.15rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  word-break: break-word;
-}
-.catalog-item .info .meta {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  flex-wrap: nowrap;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.catalog-item .info .meta > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.catalog-item .info .meta .dot {
-  width: 3px; height: 3px;
-  border-radius: 50%;
-  background: var(--text-secondary);
-  display: inline-block;
-  flex-shrink: 0;
-}
-.catalog-item .price {
-  font-size: 0.83rem;
-  font-weight: 600;
-  color: var(--green);
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-right: 0.15rem;
-}
-.catalog-item .add-btn {
-  width: 30px; height: 30px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(77, 124, 254, 0.12);
-  border: 1px solid rgba(77, 124, 254, 0.25);
-  color: var(--primary);
-  cursor: pointer;
-  transition: all var(--transition);
-  flex-shrink: 0;
-}
-.catalog-item .add-btn:hover { background: var(--primary); color: #fff; transform: scale(1.05); }
-.catalog-item .add-btn:active { transform: scale(0.94); }
-.catalog-item .add-btn svg { width: 15px; height: 15px; }
-.catalog-empty {
-  padding: 1.8rem 1rem;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-.cart-body { padding: 0.6rem; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; overflow: hidden; min-height: 0; }
-.cart-scroll { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 2px; min-height: 0; }
-.cart-scroll::-webkit-scrollbar { width: 5px; }
-.cart-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-.cart-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 2rem 1rem;
-  color: var(--text-secondary);
-  text-align: center;
-  height: 100%;
-}
-.cart-empty .icon-circle {
-  width: 46px; height: 46px;
-  border-radius: 50%;
-  background: rgba(77, 124, 254, 0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary);
-}
-.cart-empty .icon-circle svg { width: 22px; height: 22px; }
-.cart-empty p { font-size: 0.83rem; }
-.cart-empty small { font-size: 0.72rem; opacity: 0.7; }
-.cart-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  transition: all var(--transition);
-  min-width: 0;
-}
-.cart-item:hover { border-color: rgba(77, 124, 254, 0.3); }
-.cart-item .item-body { flex: 1; min-width: 0; }
-.cart-item .item-name {
-  font-size: 0.82rem;
-  font-weight: 500;
-  line-height: 1.3;
-  margin-bottom: 0.15rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  word-break: break-word;
-}
-.cart-item .item-name.free { color: var(--yellow); }
-.cart-item .item-unit { font-size: 0.7rem; color: var(--text-secondary); }
-.cart-item .item-subtotal { font-size: 0.82rem; font-weight: 700; color: var(--green); white-space: nowrap; text-align: right; flex-shrink: 0; }
-.qty-control {
-  display: flex;
-  align-items: center;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.qty-control button {
-  width: 24px; height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all var(--transition);
-  line-height: 1;
-}
-.qty-control button:hover { background: var(--card-hover); color: var(--primary); }
-.qty-control button:active { transform: scale(0.9); }
-.qty-control span { min-width: 20px; text-align: center; font-weight: 600; font-size: 0.78rem; }
-.cart-item .remove-btn {
-  width: 24px; height: 24px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition);
-  flex-shrink: 0;
-}
-.cart-item .remove-btn:hover { background: rgba(239, 64, 86, 0.12); color: var(--red); }
-.cart-item .remove-btn svg { width: 14px; height: 14px; }
-.free-item-form {
-  display: flex;
-  gap: 0.4rem;
-  padding: 0.5rem;
-  background: var(--card);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  align-items: center;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
-.free-item-form .input {
-  padding: 0.5rem 0.65rem;
-  font-size: 0.8rem;
-  background: var(--bg);
-  flex: 1;
-  min-width: 0;
-}
-.free-item-form .input-desc { flex: 2 1 120px; }
-.free-item-form .input-value { flex: 1 1 80px; max-width: 100px; }
-.free-item-form .btn-add-free {
-  width: 34px; height: 34px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--yellow);
-  color: #0a0e16;
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition);
-  flex-shrink: 0;
-}
-.free-item-form .btn-add-free:hover { filter: brightness(1.12); transform: scale(1.05); }
-.free-item-form .btn-add-free:active { transform: scale(0.94); }
-.free-item-form .btn-add-free svg { width: 16px; height: 16px; }
-.cart-summary {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem 0.95rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-.summary-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: var(--text-secondary); }
-.summary-row .value { color: var(--text); font-weight: 500; }
-.summary-divider { height: 1px; background: var(--border); margin: 0.1rem 0; }
-.summary-total { display: flex; align-items: center; justify-content: space-between; padding-top: 0.25rem; }
-.summary-total .label-total { font-size: 0.88rem; font-weight: 600; color: var(--text); }
-.summary-total .value-total { font-size: 1.3rem; font-weight: 700; color: var(--green); letter-spacing: -0.3px; }
-.cart-actions { display: flex; flex-direction: column; gap: 0.45rem; padding: 0 0.6rem 0.6rem; flex-shrink: 0; }
-.btn-save-budget {
-  width: 100%;
-  padding: 0.8rem;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--primary), #5d8aff);
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.93rem;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all var(--transition);
-  box-shadow: 0 4px 16px rgba(77, 124, 254, 0.3);
-}
-.btn-save-budget:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(77, 124, 254, 0.4); }
-.btn-save-budget:active { transform: translateY(0); }
-.btn-save-budget:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-.btn-save-budget svg { width: 18px; height: 18px; }
-.btn-clear-cart {
-  width: 100%;
-  padding: 0.5rem;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all var(--transition);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-}
-.btn-clear-cart:hover { color: var(--red); border-color: rgba(239, 64, 86, 0.4); background: rgba(239, 64, 86, 0.05); }
-.btn-clear-cart svg { width: 13px; height: 13px; }
-
-/* PLANO DE CORTE */
-.cut-items-container {
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  flex: 1;
-  min-height: 300px;
-}
-.cut-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.cut-table th {
-  background: var(--card);
-  padding: 0.5rem 0.2rem;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0px;
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  text-align: center;
-  color: var(--text-secondary);
-  font-weight: 600;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-.cut-table th:last-child { border-right: none; }
-.cut-table td {
-  padding: 0;
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  vertical-align: middle;
-}
-.cut-table td:last-child { border-right: none; }
-.cut-table tr:last-child td { border-bottom: none; }
-.cut-table input {
-  width: 100%;
-  padding: 0.6rem 0.2rem;
-  border: 2px solid transparent;
-  background: transparent;
-  color: var(--text);
-  font-size: 0.8rem;
-  outline: none;
-  transition: all 0.15s;
-  text-align: center;
-}
-.cut-table input:focus { border-color: var(--primary); background: rgba(77, 124, 254, 0.05); }
-.cut-table input::placeholder { color: var(--text-secondary); opacity: 0.3; }
-
-/* VISUAL DA FITA (C1, C2, L1, L2 - borda tracejada + barra na lateral) */
-.fita-container {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  align-items: center;
-}
-.fita-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0;
-  background: transparent;
-  border: none;
-}
-.fita-piece {
-  width: 34px;
-  height: 34px;
-  position: relative;
-  box-sizing: border-box;
-  border: 2px dashed var(--text-secondary);
-  border-radius: 2px;
-  background: var(--bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.fita-title {
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--text);
-  letter-spacing: 0;
-  margin: 0;
-  pointer-events: none;
-  user-select: none;
-}
-/* Barra da fita: cinza quando inativa, vermelha quando ativa */
-.fita-piece [class^="edge-"] {
-  position: absolute;
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  z-index: 2;
-}
-.fita-piece [class^="edge-"]::after {
-  content: '';
-  position: absolute;
-  background: var(--text-secondary);
-  opacity: 0.45;
-  border-radius: 1px;
-  transition: all 0.15s;
-}
-.fita-piece [class^="edge-"].active::after {
-  background: var(--red);
-  opacity: 1;
-  box-shadow: 0 0 4px rgba(239, 64, 86, 0.6);
-}
-.fita-piece .edge-top    { top: -6px;    left: -4px; right: -4px; height: 12px; }
-.fita-piece .edge-bottom { bottom: -6px; left: -4px; right: -4px; height: 12px; }
-.fita-piece .edge-left   { left: -6px;   top: -4px;  bottom: -4px; width: 12px; }
-.fita-piece .edge-right  { right: -6px;  top: -4px;  bottom: -4px; width: 12px; }
-.fita-piece .edge-top::after    { top: 0;    left: 0; right: 0; height: 5px; }
-.fita-piece .edge-bottom::after { bottom: 0; left: 0; right: 0; height: 5px; }
-.fita-piece .edge-left::after   { left: 0;   top: 0; bottom: 0; width: 5px; }
-.fita-piece .edge-right::after  { right: 0;  top: 0; bottom: 0; width: 5px; }
-
-/* FITA - RESPONSIVO (celular e desktop) */
-/* Desktop / tablet: quatro quadradinhos em uma linha, coluna da fita mais larga */
-@media (min-width: 768px) {
-  .cut-table th:nth-child(1) { width: 8% !important; }
-  .cut-table th:nth-child(2) { width: 12% !important; }
-  .cut-table th:nth-child(3) { width: 20% !important; }
-  .cut-table th:nth-child(4) { width: 20% !important; }
-  .cut-table th:nth-child(5) { width: 40% !important; }
-  .fita-container { gap: 12px; flex-wrap: nowrap; }
-  .fita-piece { width: 36px; height: 36px; }
-  .fita-title { font-size: 12px; }
-}
-/* Celular: quadradinhos em linha reta (A1 A2 L1 L2), menores, com a coluna da fita mais larga */
-@media (max-width: 767px) {
-  .cut-table th:nth-child(1) { width: 8% !important; }
-  .cut-table th:nth-child(2) { width: 13% !important; }
-  .cut-table th:nth-child(3) { width: 18% !important; }
-  .cut-table th:nth-child(4) { width: 18% !important; }
-  .cut-table th:nth-child(5) { width: 43% !important; }
-  .cut-table td:nth-child(5) { padding: 0.5rem 0.2rem !important; }
-  .fita-container { display: flex; flex-wrap: nowrap; gap: 10px; justify-content: center; align-items: center; }
-  .fita-piece { width: 24px; height: 24px; border-width: 2px; }
-  .fita-title { font-size: 9px; }
-  /* área de toque das laterais, sem invadir o quadradinho vizinho */
-  .fita-piece .edge-top, .fita-piece .edge-bottom { height: 14px; }
-  .fita-piece .edge-left, .fita-piece .edge-right { width: 12px; }
-  .fita-piece .edge-top { top: -7px; }
-  .fita-piece .edge-bottom { bottom: -7px; }
-  .fita-piece .edge-left { left: -6px; }
-  .fita-piece .edge-right { right: -6px; }
-  .fita-piece .edge-top::after, .fita-piece .edge-bottom::after { height: 4px; }
-  .fita-piece .edge-left::after, .fita-piece .edge-right::after { width: 4px; }
-  .cut-table th { font-size: 0.65rem; padding: 0.6rem 0.2rem; }
-  .cut-table input { padding: 0.6rem 0.1rem; font-size: 0.85rem; }
-}
-/* Telas muito pequenas */
-@media (max-width: 360px) {
-  .fita-container { gap: 8px; }
-  .fita-piece { width: 22px; height: 22px; }
-}
-
-/* Fullscreen Modal Override */
-.modal.fullscreen {
-  max-width: 100%;
-  width: 100%;
-  height: 100vh;
-  max-height: 100vh;
-  border-radius: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-.modal.fullscreen .modal-header {
-  padding: 1rem 1.2rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 0;
-  background: var(--card);
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-.modal.fullscreen .modal-header h2 {
-  flex: 1;
-  text-align: center;
-  margin: 0;
-}
-.modal.fullscreen .modal-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 1rem;
-}
-.modal.fullscreen .cut-items-container {
-  border-radius: var(--radius-sm);
-  border-left: none;
-  border-right: none;
-  margin: 0 -1rem;
-  padding: 0 1rem;
-}
-.modal.fullscreen .cut-table th:first-child,
-.modal.fullscreen .cut-table td:first-child { padding-left: 1rem; }
-.modal.fullscreen .cut-table th:last-child,
-.modal.fullscreen .cut-table td:last-child { padding-right: 1rem; }
-@media (min-width: 768px) {
-  .modal.fullscreen {
-    max-width: 900px;
-    height: 90vh;
-    border-radius: var(--radius);
-    margin: auto;
-  }
-  .modal.fullscreen .modal-header h2 {
-    padding-right: 2.5rem;
+function renderPageContent(isAdmin) {
+  switch (currentPage) {
+    case 'dashboard': return renderDashboard(isAdmin);
+    case 'budgets': return renderBudgetsPage(isAdmin);
+    case 'cutting': return renderCuttingPlansPage(isAdmin);
+    case 'clients': return renderClientsPage();
+    case 'materials': return renderMaterialsPage();
+    case 'settings': return renderSettingsPage(isAdmin);
+    default: return renderDashboard(isAdmin);
   }
 }
 
-/* RESPONSIVIDADE E ABAS */
-@media (min-width: 768px) {
-  .budget-grid { display: grid; grid-template-columns: 1.6fr 1fr; align-items: start; gap: 1.2rem; }
-  .catalog-filters { padding: 0.8rem 1rem; }
-  .search-box .input { font-size: 0.88rem; }
-  .cut-table th { font-size: 0.75rem; padding: 0.75rem 0.5rem; letter-spacing: 0.5px; }
-  .cut-table input { font-size: 0.9rem; padding: 0.75rem 0.5rem; }
-}
-@media (min-width: 1000px) {
-  .budget-grid { grid-template-columns: 1.8fr 1fr; gap: 1.5rem; }
-}
-@media (max-width: 767px) {
-  .budget-mobile-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-shrink: 0; align-items:center; }
-  .budget-tab {
-    flex: 1; padding: 0.6rem; border-radius: var(--radius-sm);
-    background: var(--card); border: 1px solid var(--border);
-    color: var(--text-secondary); font-weight: 600;
-    text-align: center; cursor: pointer; transition: all var(--transition);
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard(isAdmin) {
+  let budgets = window.db.budgets;
+  let cuts = window.db.cuttingPlans;
+  if (!isAdmin) {
+    budgets = budgets.filter(b => b.client_id === window.currentUser.id);
+    cuts = cuts.filter(c => c.client_id === window.currentUser.id);
   }
-  .budget-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
-  .budget-grid { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-  .catalog-panel, .cart-panel { display: none; flex: 1; overflow: hidden; }
-  .catalog-panel.active, .cart-panel.active { display: flex; }
+  const total = budgets.length;
+  const pending = budgets.filter(b => b.status === 'pending').length;
+  const approved = budgets.filter(b => b.status === 'approved').length;
+  const approvedValue = budgets.filter(b => b.status === 'approved').reduce((s, b) => s + b.total, 0);
+  const totalClients = window.db.users.filter(u => u.type === 'client').length;
+  const totalMaterials = window.db.materials.length;
+  
+  const recentCuts = [...cuts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3);
+
+  return `
+    <h1 class="mb-2">Dashboard</h1>
+    <p class="text-secondary mb-2">Bem-vindo, ${escapeHtml(window.currentUser.name)}!</p>
+    
+    <div class="stats-grid">
+      <div class="stat-card"><span class="label">Orçamentos</span><span class="value primary">${total}</span></div>
+      <div class="stat-card"><span class="label">Planos de Corte</span><span class="value primary">${cuts.length}</span></div>
+      <div class="stat-card"><span class="label">Pendentes</span><span class="value yellow">${pending}</span></div>
+      <div class="stat-card"><span class="label">Aprovados</span><span class="value green">${approved}</span></div>
+      <div class="stat-card"><span class="label">Valor Aprovado</span><span class="value green">${formatCurrency(approvedValue)}</span></div>
+      ${isAdmin ? `<div class="stat-card"><span class="label">Clientes</span><span class="value">${totalClients}</span></div><div class="stat-card"><span class="label">Materiais</span><span class="value">${totalMaterials}</span></div>` : ''}
+    </div>
+    
+    ${recentCuts.length > 0 ? `
+      <h2 class="mb-1" style="margin-top:1.5rem;">Planos de Corte Recentes</h2>
+      <div class="list-item card" style="flex-direction:column; align-items:stretch; gap:0.3rem; padding:0.5rem 1rem;">
+        ${recentCuts.map(c => `
+          <div class="flex items-center justify-between" style="padding:0.5rem 0; border-bottom:1px solid var(--border);">
+            <div class="info">
+              <div class="title" style="font-size:0.88rem;">${escapeHtml(c.name || c.number)} ${isAdmin ? '· ' + escapeHtml(c.client_name) : ''}</div>
+              <div class="sub">${formatDate(c.created_at)} · ${c.items.length} peças</div>
+            </div>
+            <span class="badge badge-${c.status}">${c.status === 'pending' ? 'Pendente' : c.status === 'approved' ? 'Aprovado' : 'Recusado'}</span>
+          </div>`).join('')}
+      </div>` : ''}
+  `;
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  animation: fadeIn 0.2s ease;
-}
-@media (min-width: 700px) { .modal-overlay { align-items: center; padding: 1.5rem; } }
-.modal {
-  background: var(--card);
-  width: 100%;
-  max-width: 850px;
-  max-height: 92vh;
-  overflow-y: auto;
-  border-radius: var(--radius) var(--radius) 0 0;
-  padding: 1.3rem 1.2rem calc(1.3rem + var(--safe-bottom));
-  animation: slideUp 0.25s ease;
-}
-@media (min-width: 700px) { .modal { border-radius: var(--radius); max-height: 90vh; padding: 1.5rem; } }
-@keyframes slideUp {
-  from { transform: translateY(40px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+// ============================================================
+// LISTAS
+// ============================================================
+function renderBudgetsPage(isAdmin) {
+  let budgets = window.db.budgets;
+  if (!isAdmin) budgets = budgets.filter(b => b.client_id === window.currentUser.id);
+  budgets = [...budgets].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.1rem; gap: 0.5rem; }
-.modal-header h2 { font-size: 1.15rem; }
-.modal-close {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0.3rem;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.modal-close:hover { background: var(--card-hover); color: var(--text); }
-
-/* Botão Voltar do cabeçalho do modal */
-.btn-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.8rem;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background var(--transition), border-color var(--transition);
-}
-.btn-back svg { width: 16px; height: 16px; }
-.btn-back:hover { background: var(--card-hover); border-color: var(--primary); }
-
-/* Seletor de unidade (mm / cm) */
-.unit-toggle {
-  display: inline-flex;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 3px;
-  gap: 3px;
-  height: 38px;
-  box-sizing: border-box;
-}
-.unit-btn {
-  min-width: 44px;
-  padding: 0 0.8rem;
-  background: transparent;
-  border: none;
-  border-radius: 7px;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.unit-btn:hover { color: var(--text); }
-.unit-btn.active { background: var(--primary); color: #fff; }
-
-#toast-container {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 999;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  pointer-events: none;
-  width: 90%;
-  max-width: 400px;
-}
-.toast {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--primary);
-  padding: 0.8rem 1rem;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  font-size: 0.88rem;
-  animation: slideDown 0.3s ease;
-  pointer-events: auto;
-}
-.toast.success { border-left-color: var(--green); }
-.toast.error { border-left-color: var(--red); }
-.toast.warning { border-left-color: var(--yellow); }
-@keyframes slideDown {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  return `
+    <div class="flex items-center gap-1 mb-2">
+      <button type="button" class="btn-icon" data-action="navigate" data-page="dashboard" style="border:1px solid var(--border);"><i data-lucide="arrow-left"></i></button>
+      <h1 style="margin:0;">Orçamentos</h1>
+      ${!isAdmin ? `<button type="button" class="btn btn-primary" data-action="new-budget" style="margin-left:auto;"><i data-lucide="plus"></i> Novo</button>` : ''}
+    </div>
+    ${budgets.length === 0 ? '<p class="text-secondary">Nenhum orçamento encontrado.</p>' : ''}
+    ${budgets.map(b => `
+      <div class="card mb-1" style="padding:1rem;">
+        <div class="flex items-center justify-between" style="flex-wrap:wrap; gap:0.5rem;">
+          <div>
+            <div class="flex items-center gap-1" style="flex-wrap:wrap;">
+              <strong>${escapeHtml(b.number)}</strong>
+              <span class="badge badge-${b.status}">${b.status === 'pending' ? 'Pendente' : b.status === 'approved' ? 'Aprovado' : 'Recusado'}</span>
+            </div>
+            <div class="sub text-secondary" style="font-size:0.82rem;">${isAdmin ? escapeHtml(b.client_name) + ' · ' : ''}${formatDate(b.created_at)}</div>
+          </div>
+          <div style="font-size:1.1rem; font-weight:700; color:var(--green);">${formatCurrency(b.total)}</div>
+        </div>
+        <div class="flex gap-1 mt-1" style="flex-wrap:wrap;">
+          <button type="button" class="btn btn-sm btn-outline" data-action="view-budget" data-id="${b.id}"><i data-lucide="eye"></i> Ver</button>
+          ${isAdmin && b.status === 'pending' ? `
+            <button type="button" class="btn btn-sm btn-green" data-action="approve-budget" data-id="${b.id}"><i data-lucide="check"></i> Aprovar</button>
+            <button type="button" class="btn btn-sm btn-red" data-action="refuse-budget" data-id="${b.id}"><i data-lucide="x"></i> Recusar</button>` : ''}
+          ${!isAdmin && b.status === 'pending' ? `
+            <button type="button" class="btn btn-sm btn-outline" data-action="edit-budget" data-id="${b.id}"><i data-lucide="pencil"></i> Editar</button>` : ''}
+          ${isAdmin ? `
+            <button type="button" class="btn btn-sm btn-red" data-action="delete-budget" data-id="${b.id}"><i data-lucide="trash-2"></i> Excluir</button>` : ''}
+          <button type="button" class="btn btn-sm btn-outline" data-action="pdf-budget" data-id="${b.id}"><i data-lucide="file-down"></i> Baixar PDF</button>
+          <button type="button" class="btn btn-sm btn-green" data-action="share-pdf-whatsapp" data-id="${b.id}"><i data-lucide="share-2"></i> WhatsApp</button>
+        </div>
+      </div>`).join('')}
+  `;
 }
 
-.pdf-loading {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 1rem;
-  color: var(--text);
-  font-size: 0.95rem;
-  animation: fadeIn 0.2s ease;
-}
-.pdf-loading .spinner {
-  width: 42px;
-  height: 42px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+function renderCuttingPlansPage(isAdmin) {
+  let plans = window.db.cuttingPlans;
+  if (!isAdmin) plans = plans.filter(c => c.client_id === window.currentUser.id);
+  plans = [...plans].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-.copyright {
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  padding: 1.5rem 0;
-  margin-top: auto;
-  width: 100%;
-  opacity: 0.6;
+  return `
+    <div class="flex items-center gap-1 mb-2">
+      <button type="button" class="btn-icon" data-action="navigate" data-page="dashboard" style="border:1px solid var(--border);"><i data-lucide="arrow-left"></i></button>
+      <h1 style="margin:0;">Planos de Corte</h1>
+      ${!isAdmin ? `<button type="button" class="btn btn-primary" data-action="new-cut-plan" style="margin-left:auto;"><i data-lucide="plus"></i> Novo</button>` : ''}
+    </div>
+    ${plans.length === 0 ? '<p class="text-secondary">Nenhum plano de corte encontrado.</p>' : ''}
+    ${plans.map(c => `
+      <div class="card mb-1" style="padding:1rem;">
+        <div class="flex items-center justify-between" style="flex-wrap:wrap; gap:0.5rem;">
+          <div>
+            <div class="flex items-center gap-1" style="flex-wrap:wrap;">
+              <strong>${escapeHtml(c.name || c.number)}</strong>
+              <span class="badge badge-${c.status}">${c.status === 'pending' ? 'Pendente' : c.status === 'approved' ? 'Aprovado' : 'Recusado'}</span>
+              <span style="font-size:0.7rem; color:var(--text-secondary); border:1px solid var(--border); padding:0.1rem 0.4rem; border-radius:4px;">${(c.unit || 'cm').toUpperCase()}</span>
+            </div>
+            <div class="sub text-secondary" style="font-size:0.82rem;">${isAdmin ? escapeHtml(c.client_name) + ' · ' : ''}${formatDate(c.created_at)} · ${c.items.length} peças</div>
+          </div>
+        </div>
+        <div class="flex gap-1 mt-1" style="flex-wrap:wrap;">
+          <button type="button" class="btn btn-sm btn-outline" data-action="view-cut-plan" data-id="${c.id}"><i data-lucide="eye"></i> Ver</button>
+          ${isAdmin && c.status === 'pending' ? `
+            <button type="button" class="btn btn-sm btn-green" data-action="approve-cut-plan" data-id="${c.id}"><i data-lucide="check"></i> Aprovar</button>
+            <button type="button" class="btn btn-sm btn-red" data-action="refuse-cut-plan" data-id="${c.id}"><i data-lucide="x"></i> Recusar</button>` : ''}
+          ${!isAdmin && c.status === 'pending' ? `
+            <button type="button" class="btn btn-sm btn-outline" data-action="edit-cut-plan" data-id="${c.id}"><i data-lucide="pencil"></i> Editar</button>` : ''}
+          ${isAdmin ? `
+            <button type="button" class="btn btn-sm btn-red" data-action="delete-cut-plan" data-id="${c.id}"><i data-lucide="trash-2"></i> Excluir</button>` : ''}
+          <button type="button" class="btn btn-sm btn-outline" data-action="pdf-cut-plan" data-id="${c.id}"><i data-lucide="file-down"></i> Baixar PDF</button>
+          <button type="button" class="btn btn-sm btn-green" data-action="share-cut-plan-whatsapp" data-id="${c.id}"><i data-lucide="share-2"></i> WhatsApp</button>
+        </div>
+      </div>`).join('')}
+  `;
 }
+
+// ============================================================
+// MÓDULOS DE ADMIN
+// ============================================================
+function renderClientsPage() {
+  const clients = window.db.users.filter(u => u.type === 'client');
+  return `
+    <div class="flex items-center gap-1 mb-2">
+      <button type="button" class="btn-icon" data-action="navigate" data-page="dashboard" style="border:1px solid var(--border);"><i data-lucide="arrow-left"></i></button>
+      <h1 style="margin:0;">Clientes</h1>
+      <button type="button" class="btn btn-primary" data-action="new-client" style="margin-left:auto;"><i data-lucide="plus"></i> Novo</button>
+    </div>
+    <input class="input mb-2" id="search-clients" placeholder="Buscar por nome ou documento...">
+    <div id="clients-list">
+      ${clients.map(c => `
+        <div class="list-item">
+          <div class="info"><div class="title">${escapeHtml(c.name)} ${!c.active ? '<span class="badge badge-refused">Inativo</span>' : ''}</div><div class="sub">${escapeHtml(c.email)} · ${escapeHtml(c.document || '—')}</div></div>
+          <div class="actions">
+            <button type="button" class="btn btn-sm btn-outline" data-action="edit-client" data-id="${c.id}"><i data-lucide="pencil"></i></button>
+            <button type="button" class="btn btn-sm btn-outline" data-action="reset-password" data-id="${c.id}"><i data-lucide="key"></i></button>
+            <button type="button" class="btn btn-sm ${c.active ? 'btn-outline' : 'btn-green'}" data-action="toggle-client" data-id="${c.id}"><i data-lucide="${c.active ? 'user-x' : 'user-check'}"></i></button>
+            <button type="button" class="btn btn-sm btn-red" data-action="delete-client" data-id="${c.id}"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderMaterialsPage() {
+  const materials = window.db.materials.filter(m => materialFilter === 'all' || m.category === materialFilter);
+  return `
+    <div class="flex items-center gap-1 mb-2">
+      <button type="button" class="btn-icon" data-action="navigate" data-page="dashboard" style="border:1px solid var(--border);"><i data-lucide="arrow-left"></i></button>
+      <h1 style="margin:0;">Materiais</h1>
+      <button type="button" class="btn btn-primary" data-action="new-material" style="margin-left:auto;"><i data-lucide="plus"></i> Novo</button>
+    </div>
+    <input class="input mb-2" id="search-materials" placeholder="Buscar material...">
+    
+    <div class="category-chips mb-2" style="padding-bottom: 0.5rem;">
+      ${['all', 'MDFs', 'Fitas', 'Ferragens', 'Puxadores', 'Outros'].map(c => `
+        <button type="button" class="cat-chip ${materialFilter === c ? 'active' : ''}" data-action="filter-materials" data-cat="${c}">${c === 'all' ? 'Todos' : c}</button>
+      `).join('')}
+    </div>
+
+    <div id="materials-list">
+      ${materials.length === 0 ? '<p class="text-secondary text-center py-4">Nenhum material encontrado.</p>' : ''}
+      ${materials.map(m => `
+        <div class="list-item">
+          <div class="info"><div class="title">${escapeHtml(m.name)} ${!m.active ? '<span class="badge badge-refused">Inativo</span>' : ''}</div><div class="sub">${escapeHtml(m.category)} · ${formatCurrency(m.price)} / ${escapeHtml(m.unit)}</div></div>
+          <div class="actions">
+            <button type="button" class="btn btn-sm btn-outline" data-action="edit-material" data-id="${m.id}"><i data-lucide="pencil"></i></button>
+            <button type="button" class="btn btn-sm ${m.active ? 'btn-outline' : 'btn-green'}" data-action="toggle-material" data-id="${m.id}"><i data-lucide="${m.active ? 'eye-off' : 'eye'}"></i></button>
+            <button type="button" class="btn btn-sm btn-red" data-action="delete-material" data-id="${m.id}"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderSettingsPage(isAdmin) {
+  if (!isAdmin) return `<h1 class="mb-2">Meu Perfil</h1><div class="card"><p><strong>Nome:</strong> ${escapeHtml(window.currentUser.name)}</p><p><strong>E-mail:</strong> ${escapeHtml(window.currentUser.email)}</p></div>`;
+  const s = window.db.settings;
+  return `
+    <div class="flex items-center gap-1 mb-2">
+      <button type="button" class="btn-icon" data-action="navigate" data-page="dashboard" style="border:1px solid var(--border);"><i data-lucide="arrow-left"></i></button>
+      <h1 style="margin:0;">Configurações</h1>
+    </div>
+    <div class="card mb-2">
+      <h3 class="mb-1">Dados da Empresa</h3>
+      <div class="flex flex-col gap-1">
+        <div><label class="label">Nome</label><input class="input" id="cfg-companyName" value="${escapeHtml(s.company_name || 'MAD PRIME')}"></div>
+        <div><label class="label">CNPJ</label><input class="input" id="cfg-cnpj" value="${escapeHtml(s.cnpj || '')}"></div>
+        <div><label class="label">WhatsApp 1</label><input class="input" id="cfg-whatsapp" value="${escapeHtml(s.whatsapp || '')}" placeholder="79996505113"></div>
+        <div><label class="label">WhatsApp 2</label><input class="input" id="cfg-whatsapp2" value="${escapeHtml(s.whatsapp2 || '')}" placeholder="79996929174"></div>
+        <div><label class="label">E-mail</label><input class="input" id="cfg-email" value="${escapeHtml(s.email || '')}"></div>
+        <div><label class="label">Endereço</label><textarea class="textarea" id="cfg-address">${escapeHtml(s.address || '')}</textarea></div>
+        <div><label class="label">Prefixo de Numeração</label><input class="input" id="cfg-numberPrefix" value="${escapeHtml(s.number_prefix || '')}"></div>
+        <div><label class="label">Observações Padrão</label><textarea class="textarea" id="cfg-defaultConditions">${escapeHtml(s.default_conditions || '')}</textarea></div>
+        <div>
+          <label class="label">Logo (Base64)</label>
+          <input class="input" type="file" id="cfg-logo" accept="image/*">
+          ${s.logo ? `<img src="${s.logo}" style="max-height:50px; margin-top:0.5rem; border-radius:6px;">` : ''}
+        </div>
+        <button type="button" class="btn btn-primary mt-1" data-action="save-settings"><i data-lucide="save"></i> Salvar Configurações</button>
+      </div>
+    </div>
+    
+    <div class="card mb-2">
+      <h3 class="mb-1">Backup e Restauração</h3>
+      <p class="text-secondary mb-2" style="font-size: 0.85rem;">Baixe uma cópia de segurança de todos os dados do sistema.</p>
+      <div class="flex flex-col gap-1">
+        <button type="button" class="btn btn-outline w-full" data-action="download-backup" style="justify-content: flex-start;">
+          <i data-lucide="download"></i> Baixar Backup Completo
+        </button>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// MÓDULO DE PLANO DE CORTE (MODAIS)
+// ============================================================
+function openNewCutPlanModal() {
+  cutState.editId = null;
+  cutState.editNumber = '';
+  cutState.unit = 'cm';
+  cutState.materialPadrao = 'MDF Branco 18mm';
+  cutState.name = '';
+  cutState.items = Array.from({ length: 100 }, () => ({
+    id: uid('item'), qty: '', height: '', width: '', top: false, bottom: false, left: false, right: false, obs: ''
+  }));
+  renderCutPlanModal();
+}
+
+function openEditCutPlanModal(planId) {
+  const c = window.db.cuttingPlans.find(x => x.id === planId);
+  if (!c) return;
+  if (c.status !== 'pending') { showToast('Apenas planos pendentes podem ser editados.', 'warning'); return; }
+  cutState.editId = c.id;
+  cutState.editNumber = c.number;
+  cutState.unit = c.unit || 'cm';
+  cutState.materialPadrao = c.material_padrao || 'MDF Branco 18mm';
+  cutState.name = c.name || '';
+  
+  const savedItems = c.items.map(i => ({ ...i }));
+  const emptyItemsNeeded = 100 - savedItems.length;
+  const emptyItems = Array.from({ length: Math.max(0, emptyItemsNeeded) }, () => ({
+    id: uid('item'), qty: '', height: '', width: '', top: false, bottom: false, left: false, right: false, obs: ''
+  }));
+  cutState.items = [...savedItems, ...emptyItems];
+  renderCutPlanModal();
+}
+
+function renderCutPlanModal() {
+  const isEdit = !!cutState.editId;
+  const materials = window.db.materials.filter(m => m.category === 'MDFs' && m.active);
+
+  openModal(isEdit ? `Editar ${cutState.editNumber}` : 'Novo Plano de Corte', `
+    <div class="flex flex-col gap-2" style="height: 100%;">
+      <div class="flex gap-1 mb-1" style="flex-wrap:wrap; align-items:flex-end;">
+        <div style="flex: 2; min-width: 150px;">
+          <label class="label" style="margin-bottom:0.2rem;">Nome do Projeto</label>
+          <input type="text" class="input" id="cut-name-input" placeholder="Ex: Armário Cozinha" value="${escapeHtml(cutState.name)}">
+        </div>
+        <div style="flex: 1; min-width: 120px;">
+          <label class="label" style="margin-bottom:0.2rem;">Material Principal</label>
+          <select class="select" data-action="set-material">
+            ${materials.map(m => `<option value="${escapeHtml(m.name)}" ${cutState.materialPadrao === m.name ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="flex-shrink-0">
+          <label class="label" style="margin-bottom:0.2rem;">Unidade</label>
+          <div class="unit-toggle">
+            <button type="button" class="unit-btn ${cutState.unit === 'mm' ? 'active' : ''}" data-action="set-unit" data-unit="mm">mm</button>
+            <button type="button" class="unit-btn ${cutState.unit === 'cm' ? 'active' : ''}" data-action="set-unit" data-unit="cm">cm</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-1 mb-2" style="width: 100%;">
+        <button type="button" class="btn btn-outline" data-action="close-modal" style="flex: 1; height: 38px;">
+          <i data-lucide="arrow-left"></i> Voltar
+        </button>
+        <button type="button" class="btn btn-primary" data-action="${isEdit ? 'update-cut-plan' : 'save-cut-plan'}" style="flex: 2; height: 38px;">
+          <i data-lucide="save"></i> Salvar Plano
+        </button>
+      </div>
+
+      <div class="cut-items-container">
+        <table class="cut-table">
+          <thead>
+            <tr>
+              <th style="width: 8%;">Peça</th>
+              <th style="width: 12%;">Qtd</th>
+              <th style="width: 20%;">Alt. (${cutState.unit})</th>
+              <th style="width: 20%;">Larg. (${cutState.unit})</th>
+              <th style="width: 40%;">Fita</th>
+            </tr>
+          </thead>
+          <tbody id="cut-tbody">
+            ${cutState.items.map((item, idx) => renderCutRow(item, idx)).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `, true);
+}
+
+function renderCutRow(item, idx) {
+  const isEmpty = !item.height && !item.width;
+  return `
+    <tr data-cut-row="${idx}" style="${isEmpty ? 'background: rgba(255,255,255,0.02);' : ''}">
+      <td style="text-align:center; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">${idx + 1}</td>
+      <td><input type="number" class="input-qty" data-cut-field="qty" data-idx="${idx}" value="${item.qty}" min="1" placeholder="1"></td>
+      <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
+      <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
+      <td style="padding: 0.5rem;">
+        <div class="fita-container">
+          
+          <!-- Quatro quadradinhos: A1/A2 (altura) e L1/L2 (largura) -->
+          <div class="fita-box">
+            <div class="fita-piece">
+              <span class="fita-title">A1</span>
+              <button type="button" class="edge-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Altura 1 (Esquerda)"></button>
+            </div>
+          </div>
+
+          <div class="fita-box">
+            <div class="fita-piece">
+              <span class="fita-title">A2</span>
+              <button type="button" class="edge-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Altura 2 (Direita)"></button>
+            </div>
+          </div>
+
+          <div class="fita-box">
+            <div class="fita-piece">
+              <span class="fita-title">L1</span>
+              <button type="button" class="edge-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Largura 1 (Base)"></button>
+            </div>
+          </div>
+
+          <div class="fita-box">
+            <div class="fita-piece">
+              <span class="fita-title">L2</span>
+              <button type="button" class="edge-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita na Largura 2 (Topo)"></button>
+            </div>
+          </div>
+
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function updateCutItem(idx, field, value) {
+  if (cutState.items[idx]) cutState.items[idx][field] = value;
+}
+
+function openCutPlanViewModal(planId) {
+  const c = window.db.cuttingPlans.find(x => x.id === planId);
+  if (!c) return;
+  
+  let html = '';
+  c.items.forEach((item, idx) => {
+    html += `
+      <div style="border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <div class="flex justify-between items-center mb-1">
+          <strong style="color:var(--primary);">Peça ${idx + 1}</strong>
+          <span class="badge badge-pending">${item.qty || 1}x</span>
+        </div>
+        <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Dimensões:</strong> ${item.height}${c.unit || 'cm'} (A) x ${item.width}${c.unit || 'cm'} (L)</p>
+        <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong> 
+          ${item.left ? 'A1 ' : ''}${item.right ? 'A2 ' : ''}${item.bottom ? 'L1 ' : ''}${item.top ? 'L2' : ''}
+          ${!item.top && !item.bottom && !item.left && !item.right ? 'Nenhuma' : ''}
+        </p>
+      </div>
+    `;
+  });
+
+  openModal(`Plano: ${c.name || c.number}`, `
+    <div class="flex flex-col gap-1">
+      <p><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</p>
+      <p><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</p>
+      <p><strong>Data:</strong> ${formatDate(c.created_at)}</p>
+      <p><strong>Status:</strong> <span class="badge badge-${c.status}">${c.status === 'pending' ? 'Pendente' : c.status === 'approved' ? 'Aprovado' : 'Recusado'}</span></p>
+      <p><strong>Unidade:</strong> ${(c.unit || 'cm').toUpperCase()}</p>
+      <div class="mt-1">${html}</div>
+      <div class="flex gap-1 mt-2" style="flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm btn-outline" data-action="pdf-cut-plan" data-id="${c.id}"><i data-lucide="file-down"></i> Baixar PDF</button>
+        <button type="button" class="btn btn-sm btn-green" data-action="share-cut-plan-whatsapp" data-id="${c.id}"><i data-lucide="share-2"></i> Enviar via WhatsApp</button>
+      </div>
+    </div>
+  `);
+}
+
+// ============================================================
+// VISUALIZAR ORÇAMENTO
+// ============================================================
+function openBudgetViewModal(budgetId) {
+  const b = window.db.budgets.find(x => x.id === budgetId);
+  if (!b) return;
+  
+  let itemsHtml = b.items.map((i, idx) => `
+    <div style="border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 0.6rem; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div style="font-weight:500; font-size:0.9rem;">${idx + 1}. ${escapeHtml(i.name)}</div>
+        <div style="font-size:0.8rem; color:var(--text-secondary);">${formatCurrency(i.price)} / un.</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-weight:600; font-size:0.9rem;">Qtd: ${i.qty}</div>
+        <div style="font-weight:700; color:var(--green); font-size:0.9rem;">${formatCurrency(i.price * i.qty)}</div>
+      </div>
+    </div>
+  `).join('');
+
+  openModal(`Orçamento: ${b.number}`, `
+    <div class="flex flex-col gap-1">
+      <p><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</p>
+      <p><strong>Data:</strong> ${formatDate(b.created_at)}</p>
+      <p><strong>Status:</strong> <span class="badge badge-${b.status}">${b.status === 'pending' ? 'Pendente' : b.status === 'approved' ? 'Aprovado' : 'Recusado'}</span></p>
+      
+      <h3 class="mt-2 mb-1">Itens do Orçamento</h3>
+      <div style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+        ${itemsHtml}
+      </div>
+      
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem; margin-top:1rem; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:600; font-size:1rem;">Total:</span>
+        <span style="font-weight:700; font-size:1.3rem; color:var(--green);">${formatCurrency(b.total)}</span>
+      </div>
+
+      <div class="flex gap-1 mt-2" style="flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm btn-outline" data-action="pdf-budget" data-id="${b.id}"><i data-lucide="file-down"></i> Baixar PDF</button>
+        <button type="button" class="btn btn-sm btn-green" data-action="share-pdf-whatsapp" data-id="${b.id}"><i data-lucide="share-2"></i> Enviar via WhatsApp</button>
+      </div>
+    </div>
+  `);
+}
+
+// ============================================================
+// ORÇAMENTO (CARRINHO)
+// ============================================================
+function openNewBudgetModal() {
+  budgetState.cart = []; budgetState.category = 'all'; budgetState.search = ''; budgetState.editId = null; budgetState.editingNumber = ''; budgetState.mobileTab = 'catalog';
+  renderBudgetModal();
+}
+function openEditBudgetModal(id) {
+  const b = window.db.budgets.find(x => x.id === id);
+  if (!b || b.status !== 'pending') return;
+  budgetState.cart = b.items.map(i => ({ ...i })); budgetState.category = 'all'; budgetState.search = ''; budgetState.editId = b.id; budgetState.editingNumber = b.number; budgetState.mobileTab = 'catalog';
+  renderBudgetModal();
+}
+
+function renderBudgetModal() {
+  const isEdit = !!budgetState.editId;
+  const materials = window.db.materials.filter(m => m.active);
+  const categories = ['all', ...new Set(materials.map(m => m.category))];
+  
+  openModal(isEdit ? `Editar ${budgetState.editingNumber}` : 'Novo Orçamento', `
+    <div class="flex flex-col" style="height:100%;">
+      <div class="budget-mobile-tabs mobile-only">
+        <button type="button" class="btn-icon" data-action="close-modal" style="border:1px solid var(--border); margin-right:0.3rem;"><i data-lucide="arrow-left"></i></button>
+        <button type="button" class="budget-tab ${budgetState.mobileTab === 'catalog' ? 'active' : ''}" data-action="budget-tab" data-tab="catalog">Catálogo</button>
+        <button type="button" class="budget-tab ${budgetState.mobileTab === 'cart' ? 'active' : ''}" data-action="budget-tab" data-tab="cart">Carrinho</button>
+      </div>
+      <div class="budget-grid">
+        <div class="catalog-panel ${budgetState.mobileTab === 'catalog' ? 'active' : ''}">
+          <div class="panel-header"><h3><i data-lucide="package"></i> Catálogo</h3><span class="count-badge" id="catalog-count">0 itens</span></div>
+          <div class="catalog-filters">
+            <div class="search-box"><i data-lucide="search" class="search-icon"></i><input class="input" id="catalog-search-input" placeholder="Buscar material..." value="${escapeHtml(budgetState.search)}">${budgetState.search ? `<button type="button" class="clear-search" data-action="clear-catalog-search"><i data-lucide="x"></i></button>` : ''}</div>
+            <div class="category-chips" id="catalog-categories">${categories.map(c => `<button type="button" class="cat-chip ${budgetState.category === c ? 'active' : ''}" data-action="catalog-category" data-cat="${c}">${c === 'all' ? 'Todos' : escapeHtml(c)}</button>`).join('')}</div>
+          </div>
+          <div class="catalog-scroll" id="catalog-list"></div>
+        </div>
+        <div class="cart-panel ${budgetState.mobileTab === 'cart' ? 'active' : ''}">
+          <div class="panel-header"><h3><i data-lucide="shopping-cart"></i> Carrinho</h3><span class="count-badge" id="cart-count">0 itens</span></div>
+          <div class="cart-body">
+            <div class="cart-scroll" id="cart-items"></div>
+            <div class="free-item-form"><input class="input input-desc" id="free-item-desc" placeholder="Item livre"><input class="input input-value" id="free-item-value" type="number" placeholder="R$"><button type="button" class="btn-add-free" data-action="add-free-item"><i data-lucide="plus"></i></button></div>
+            <div class="cart-summary"><div class="summary-row"><span>Total</span><span class="value" id="summary-total">R$ 0,00</span></div></div>
+          </div>
+          <div class="cart-actions"><button type="button" class="btn-save-budget" data-action="${isEdit ? 'update-budget' : 'save-budget'}"><i data-lucide="save"></i> Salvar Orçamento</button></div>
+        </div>
+      </div>
+    </div>
+  `, true);
+  refreshCatalog(); refreshCart();
+}
+
+function refreshCatalog() {
+  const list = document.getElementById('catalog-list');
+  const count = document.getElementById('catalog-count');
+  if (!list) return;
+
+  let filtered = window.db.materials.filter(m => m.active);
+  if (budgetState.category !== 'all') filtered = filtered.filter(m => m.category === budgetState.category);
+  if (budgetState.search) {
+    const q = budgetState.search.toLowerCase();
+    filtered = filtered.filter(m => m.name.toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q) || m.category.toLowerCase().includes(q));
+  }
+  if (count) count.textContent = filtered.length + (filtered.length === 1 ? ' item' : ' itens');
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="catalog-empty"><i data-lucide="search-x" style="width:26px;height:26px;margin-bottom:0.4rem;opacity:0.5;"></i><br>Nenhum material encontrado</div>`;
+    lucide.createIcons();
+    return;
+  }
+  list.innerHTML = filtered.map(m => {
+    return `
+      <div class="catalog-item">
+        <div class="info">
+          <div class="name" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
+          <div class="meta" title="${escapeHtml(m.category)} · ${escapeHtml(m.unit)}"><span>${escapeHtml(m.category)}</span><span class="dot"></span><span>${escapeHtml(m.unit)}</span></div>
+        </div>
+        <span class="price">${formatCurrency(m.price)}</span>
+        <button type="button" class="add-btn" data-action="add-to-cart" data-id="${m.id}" title="Adicionar">
+          <i data-lucide="plus"></i>
+        </button>
+      </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+function refreshCart() {
+  const cartItemsEl = document.getElementById('cart-items');
+  const cartCountEl = document.getElementById('cart-count');
+  const totalEl = document.getElementById('summary-total');
+  const saveBtn = document.querySelector('.btn-save-budget');
+  if (!cartItemsEl) return;
+
+  const totalQty = budgetState.cart.reduce((s, i) => s + i.qty, 0);
+  const totalValue = budgetState.cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  if (cartCountEl) cartCountEl.textContent = totalQty + (totalQty === 1 ? ' item' : ' itens');
+  if (totalEl) totalEl.textContent = formatCurrency(totalValue);
+  if (saveBtn) saveBtn.disabled = budgetState.cart.length === 0;
+
+  if (budgetState.cart.length === 0) {
+    cartItemsEl.innerHTML = `<div class="cart-empty"><div class="icon-circle"><i data-lucide="shopping-bag"></i></div><p>Carrinho vazio</p><small>Adicione itens do catálogo</small></div>`;
+  } else {
+    cartItemsEl.innerHTML = budgetState.cart.map((item, idx) => `
+      <div class="cart-item">
+        <div class="item-body">
+          <div class="item-name ${item.materialId ? '' : 'free'}">${escapeHtml(item.name)}</div>
+          <div class="item-unit">${formatCurrency(item.price)} / un.</div>
+        </div>
+        <div class="qty-control">
+          <button type="button" data-action="dec-qty" data-idx="${idx}">−</button>
+          <span>${item.qty}</span>
+          <button type="button" data-action="inc-qty" data-idx="${idx}">+</button>
+        </div>
+        <div class="item-subtotal">${formatCurrency(item.price * item.qty)}</div>
+        <button type="button" class="remove-btn" data-action="remove-cart-item" data-idx="${idx}" title="Remover"><i data-lucide="x"></i></button>
+      </div>`).join('');
+  }
+  lucide.createIcons();
+}
+
+// ============================================================
+// GERADOR DE PDF
+// ============================================================
+function getCompanyInfo() {
+  const s = window.db.settings || {};
+  return {
+    company_name: s.company_name || 'MAD PRIME',
+    cnpj: s.cnpj || '49.788.369/0001-08',
+    whatsapp: s.whatsapp || '79996505113',
+    whatsapp2: s.whatsapp2 || '79996929174',
+    email: s.email || 'contato@madprime.com',
+    address: s.address || 'Av. Manoel Cruz, 277 – Bairro Dezoito do Forte, Aracaju – SE, CEP: 49.072-450',
+    logo: s.logo || null,
+    number_prefix: s.number_prefix || 'MP-2026-',
+    default_conditions: s.default_conditions || ''
+  };
+}
+
+// Quadradinhos de fita para o PDF (A1, A2, L1, L2): borda tracejada + barra vermelha na lateral com fita
+function buildFitaPDF(i) {
+  const bar = {
+    left:   'top:-3px; bottom:-3px; left:-6px; width:5px;',
+    right:  'top:-3px; bottom:-3px; right:-6px; width:5px;',
+    bottom: 'left:-3px; right:-3px; bottom:-6px; height:5px;',
+    top:    'left:-3px; right:-3px; top:-6px; height:5px;'
+  };
+  const box = (label, edge) => `
+    <div style="display:inline-block; position:relative; width:26px; height:26px; box-sizing:border-box; border:2px dashed #555; margin:0 6px; vertical-align:middle; text-align:center; line-height:22px; font-size:10px; font-weight:800; color:#000;">
+      ${label}
+      ${i[edge] ? `<div style="position:absolute; ${bar[edge]} background:#e53935;"></div>` : ''}
+    </div>`;
+  return box('A1', 'left') + box('A2', 'right') + box('L1', 'bottom') + box('L2', 'top');
+}
+
+function buildCutPlanHTML(c) {
+  const s = getCompanyInfo();
+  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+  const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
+  const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
+  const dataObj = new Date(c.created_at);
+  const dia = dataObj.getDate().toString().padStart(2, '0');
+  const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
+  const numCurto = c.number.split('-').pop();
+  const handle = s.company_name.replace(/\s+/g, '');
+  const unitLabel = (c.unit || 'cm').toUpperCase();
+
+  return `
+    <div style="width:800px; height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
+        <div>${logoSVG}</div>
+        <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:50px;">
+        <h1 style="font-size:48px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Plano de Corte</h1>
+        <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
+      </div>
+      <div style="margin-bottom:20px; font-size:22px; font-weight:700;">${escapeHtml(c.name || 'Sem nome')}</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
+        <div style="font-size:14px; color:#000000; line-height:1.6;">
+          ${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
+        </div>
+        <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
+      </div>
+      <div style="margin-bottom:30px; font-size:14px; display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
+          <div style="margin-top:0.3rem;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
+        </div>
+        <div style="font-weight:700; border:1px solid #000; padding:2px 8px; border-radius:4px;">Medidas em ${unitLabel}</div>
+      </div>
+      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
+        <thead>
+          <tr style="background:#000000; color:#ffffff;">
+            <th style="text-align:center; padding:10px; width:50px; border-radius:4px 0 0 4px;">Peça</th>
+            <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
+            <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
+            <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
+            <th style="text-align:center; padding:10px; width:190px; border-radius:0 4px 4px 0;">Fita</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${c.items.map((i, idx) => `
+            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
+              <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
+              <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
+              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
+              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
+              <td style="text-align:center; padding:12px 10px;">
+                ${buildFitaPDF(i)}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
+        <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
+      </div>
+    </div>`;
+}
+
+function buildBudgetHTML(b) {
+  const s = getCompanyInfo();
+  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+  const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
+  const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
+  const conditions = (b.conditions || s.default_conditions || '').trim();
+  const dataObj = new Date(b.created_at);
+  const dia = dataObj.getDate().toString().padStart(2, '0');
+  const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
+  const numCurto = b.number.split('-').pop();
+  const handle = s.company_name.replace(/\s+/g, '');
+
+  return `
+    <div style="width:800px; height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
+        <div>${logoSVG}</div>
+        <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:50px;">
+        <h1 style="font-size:48px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Orçamento</h1>
+        <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
+        <div style="font-size:14px; color:#000000; line-height:1.6;">${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
+        <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
+      </div>
+      <div style="margin-bottom:30px; font-size:14px;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>
+      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
+        <thead>
+          <tr style="background:#000000; color:#ffffff;">
+            <th style="text-align:center; padding:10px; width:40px; border-radius:4px 0 0 4px;">Nº</th>
+            <th style="text-align:left; padding:10px;">Material</th>
+            <th style="text-align:center; padding:10px; width:50px;">Qtd</th>
+            <th style="text-align:right; padding:10px; width:100px;">Preço</th>
+            <th style="text-align:right; padding:10px; width:100px; border-radius:0 4px 4px 0;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${b.items.map((i, idx) => `
+            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
+              <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
+              <td style="padding:12px 10px; font-weight:500;">${escapeHtml(i.name)}</td>
+              <td style="text-align:center; padding:12px 10px;">${i.qty}</td>
+              <td style="text-align:right; padding:12px 10px;">${formatCurrency(i.price)}</td>
+              <td style="text-align:right; padding:12px 10px; font-weight:700;">${formatCurrency(i.price * i.qty)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      <div style="display:flex; justify-content:flex-end; margin-bottom:60px;">
+        <div style="background:#000000; color:#ffffff; padding:12px 24px; font-size:16px; font-weight:600; border-radius:4px;">${formatCurrency(b.total)}</div>
+      </div>
+      ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:40px; padding-top:20px; border-top:1px solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
+      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
+        <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
+      </div>
+    </div>`;
+}
+
+function generatePDFBlob(type, id) {
+  return new Promise((resolve, reject) => {
+    let htmlContent = '';
+    if (type === 'budget') {
+      const b = window.db.budgets.find(x => x.id === id);
+      if (!b) return reject('Orçamento não encontrado.');
+      htmlContent = buildBudgetHTML(b);
+    } else if (type === 'cut') {
+      const c = window.db.cuttingPlans.find(x => x.id === id);
+      if (!c) return reject('Plano de Corte não encontrado.');
+      htmlContent = buildCutPlanHTML(c);
+    }
+
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '800px';
+    container.style.height = '1120px';
+    container.style.background = '#ffffff';
+    container.innerHTML = htmlContent;
+    document.body.appendChild(container);
+
+    html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      width: 800,
+      height: 1120
+    }).then((canvas) => {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      container.remove();
+      resolve(pdf.output('blob'));
+    }).catch((err) => {
+      container.remove();
+      reject(err);
+    });
+  });
+}
+
+async function downloadPDF(type, id) {
+  const loading = document.createElement('div');
+  loading.className = 'pdf-loading';
+  loading.innerHTML = `<div class="spinner"></div><span>Gerando PDF...</span>`;
+  document.body.appendChild(loading);
+
+  try {
+    const blob = await generatePDFBlob(type, id);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; 
+    const doc = type === 'budget' ? window.db.budgets.find(x => x.id === id) : window.db.cuttingPlans.find(x => x.id === id);
+    const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
+    a.download = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${nameToUse}.pdf`; 
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('PDF gerado com sucesso!', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('Erro ao gerar PDF.', 'error');
+  } finally {
+    loading.remove();
+  }
+}
+
+async function sharePDFWhatsApp(type, id) {
+  const loading = document.createElement('div');
+  loading.className = 'pdf-loading';
+  loading.innerHTML = `<div class="spinner"></div><span>Preparando PDF...</span>`;
+  document.body.appendChild(loading);
+
+  try {
+    const s = getCompanyInfo();
+    const doc = type === 'budget' ? window.db.budgets.find(x => x.id === id) : window.db.cuttingPlans.find(x => x.id === id);
+    const blob = await generatePDFBlob(type, id);
+    const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
+    const fileName = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${nameToUse}.pdf`;
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+    
+    const phone = (s.whatsapp || '').replace(/\D/g, '');
+    const title = type === 'budget' ? 'orçamento' : 'plano de corte';
+    const mensagem = `Olá! Segue em anexo o ${title} *${nameToUse}* da *${s.company_name}*.`;
+    const msgEncoded = encodeURIComponent(mensagem);
+    const waURL = phone ? `https://wa.me/55${phone}?text=${msgEncoded}` : `https://wa.me/?text=${msgEncoded}`;
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: `${type === 'budget' ? 'Orçamento' : 'Plano de Corte'} ${nameToUse}`, text: mensagem });
+      showToast('PDF compartilhado!', 'success');
+    } else {
+      showToast('PDF baixado! Abrindo WhatsApp...', 'success');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName; a.click();
+      URL.revokeObjectURL(url);
+      setTimeout(() => window.open(waURL, '_blank'), 600);
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error(err);
+      showToast('Erro ao gerar/compartilhar PDF.', 'error');
+    }
+  } finally {
+    loading.remove();
+  }
+}
+
+// ============================================================
+// AÇÕES DE SALVAR (SUPABASE)
+// ============================================================
+async function saveCutPlan() {
+  if (!cutState.name.trim()) { showToast('Informe um nome para o projeto.', 'error'); return; }
+  const validItems = cutState.items.filter(i => i.height && i.width);
+  if (validItems.length === 0) { showToast('Preencha pelo menos uma peça com altura e largura.', 'error'); return; }
+  
+  const user = window.db.users.find(u => u.id === window.currentUser.id);
+  // Próximo número = maior número existente + 1 (evita duplicar quando há planos excluídos ou ocultos)
+  const maxSeq = window.db.cuttingPlans.reduce((max, p) => {
+    const m = /(\d+)\s*$/.exec(p.number || '');
+    return m ? Math.max(max, parseInt(m[1], 10)) : max;
+  }, 0);
+  let seq = Math.max(maxSeq, window.db.cuttingPlans.length) + 1;
+
+  const basePlan = {
+    name: cutState.name, client_id: window.currentUser.id, client_name: user ? user.name : window.currentUser.name,
+    items: validItems.map(i => ({ ...i })), unit: cutState.unit, material_padrao: cutState.materialPadrao, status: 'pending', created_at: new Date().toISOString()
+  };
+
+  // Se o número já existir no banco (valor duplicado), tenta o próximo
+  let error = null;
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const number = 'PC-2026-' + String(seq).padStart(4, '0');
+    ({ error } = await supabaseClient.from('cutting_plans').insert([{ number, ...basePlan }]));
+    const isDuplicate = error && (error.code === '23505' || /duplicate|unique/i.test(error.message || ''));
+    if (!isDuplicate) break;
+    seq++;
+  }
+  if (error) { console.error('Erro ao salvar plano de corte:', error); showToast('Erro ao salvar no banco: ' + (error.message || 'desconhecido'), 'error'); } 
+  else { await loadDB(); closeModal(); renderApp(); showToast('Plano de corte salvo!', 'success'); }
+}
+
+async function updateCutPlan() {
+  if (!cutState.name.trim()) { showToast('Informe um nome para o projeto.', 'error'); return; }
+  const validItems = cutState.items.filter(i => i.height && i.width);
+  if (validItems.length === 0) { showToast('Preencha pelo menos uma peça com altura e largura.', 'error'); return; }
+
+  const c = window.db.cuttingPlans.find(x => x.id === cutState.editId);
+  if (!c) { showToast('Plano não encontrado.', 'error'); return; }
+  if (c.status !== 'pending') { showToast('Este plano não pode mais ser editado.', 'warning'); return; }
+
+  const updatedCutPlan = { name: cutState.name, items: validItems.map(i => ({ ...i })), unit: cutState.unit, material_padrao: cutState.materialPadrao };
+  const { error } = await supabaseClient.from('cutting_plans').update(updatedCutPlan).eq('id', c.id);
+  if (error) { console.error('Erro ao atualizar plano de corte:', error); showToast('Erro ao atualizar: ' + (error.message || 'desconhecido'), 'error'); } 
+  else { await loadDB(); closeModal(); renderApp(); showToast('Plano de corte atualizado!', 'success'); }
+}
+
+async function saveBudget() {
+  if (budgetState.cart.length === 0) { showToast('Adicione itens ao carrinho.', 'error'); return; }
+  const total = budgetState.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const user = window.db.users.find(u => u.id === window.currentUser.id);
+  const seq = window.db.budgets.length + 1;
+  const number = (window.db.settings.number_prefix || 'MP-2026-') + String(seq).padStart(4, '0');
+
+  const newBudget = {
+    number, client_id: window.currentUser.id, client_name: user ? user.name : window.currentUser.name,
+    items: budgetState.cart.map(i => ({ ...i })), total, status: 'pending', conditions: window.db.settings.default_conditions || '', created_at: new Date().toISOString()
+  };
+
+  const { error } = await supabaseClient.from('budgets').insert([newBudget]);
+  if (error) { showToast('Erro ao salvar no banco.', 'error'); } 
+  else { await loadDB(); closeModal(); renderApp(); showToast('Orçamento criado com sucesso!', 'success'); }
+}
+
+async function updateBudget() {
+  if (budgetState.cart.length === 0) { showToast('Adicione itens ao carrinho.', 'error'); return; }
+  const b = window.db.budgets.find(x => x.id === budgetState.editId);
+  if (!b) { showToast('Orçamento não encontrado.', 'error'); return; }
+  if (b.status !== 'pending') { showToast('Este orçamento não pode mais ser editado.', 'warning'); return; }
+
+  const updatedBudget = { items: budgetState.cart.map(i => ({ ...i })), total: budgetState.cart.reduce((s, i) => s + i.price * i.qty, 0), updated_at: new Date().toISOString() };
+  const { error } = await supabaseClient.from('budgets').update(updatedBudget).eq('id', b.id);
+  if (error) { showToast('Erro ao atualizar.', 'error'); } 
+  else { await loadDB(); closeModal(); renderApp(); showToast('Orçamento atualizado!', 'success'); }
+}
+
+async function saveClient() {
+  const name = document.getElementById('cl-name')?.value.trim();
+  const email = document.getElementById('cl-email')?.value.trim();
+  const document_ = document.getElementById('cl-document')?.value.trim();
+  const phone = document.getElementById('cl-phone')?.value.trim();
+  const id = document.getElementById('cl-id')?.value;
+
+  if (!name || !email) { showToast('Nome e e-mail são obrigatórios.', 'error'); return; }
+
+  if (!id) {
+    const password = document.getElementById('cl-password')?.value;
+    if (!password || password.length < 4) { showToast('Senha mínima de 4 caracteres.', 'error'); return; }
+    const { error } = await supabaseClient.from('users').insert([{ type: 'client', name, email, document: document_, phone, password, active: true, created_at: new Date().toISOString() }]);
+    if (error) { showToast('Erro ao cadastrar.', 'error'); return; }
+    showToast('Cliente cadastrado!', 'success');
+  } else {
+    const { error } = await supabaseClient.from('users').update({name, email, document: document_, phone}).eq('id', id);
+    if (error) { showToast('Erro ao atualizar.', 'error'); return; }
+    showToast('Cliente atualizado!', 'success');
+  }
+  await loadDB(); closeModal(); renderApp();
+}
+
+async function saveMaterial() {
+  const name = document.getElementById('mat-name')?.value.trim();
+  const description = document.getElementById('mat-desc')?.value.trim();
+  const price = parseFloat(document.getElementById('mat-price')?.value);
+  const unit = document.getElementById('mat-unit')?.value.trim() || 'un';
+  const category = document.getElementById('mat-category')?.value;
+  const id = document.getElementById('mat-id')?.value;
+
+  if (!name || isNaN(price) || price < 0) { showToast('Nome e preço válidos são obrigatórios.', 'error'); return; }
+
+  if (!id) {
+    const { error } = await supabaseClient.from('materials').insert([{ name, description, price, unit, category, active: true }]);
+    if (error) { showToast('Erro ao cadastrar.', 'error'); return; }
+    showToast('Material cadastrado!', 'success');
+  } else {
+    const { error } = await supabaseClient.from('materials').update({ name, description, price, unit, category }).eq('id', id);
+    if (error) { showToast('Erro ao atualizar.', 'error'); return; }
+    showToast('Material atualizado!', 'success');
+  }
+  await loadDB(); closeModal(); renderApp();
+}
+
+async function saveSettings() {
+  const s = window.db.settings;
+  const updatedSettings = {
+    company_name: document.getElementById('cfg-companyName')?.value || s.company_name,
+    cnpj: document.getElementById('cfg-cnpj')?.value || s.cnpj,
+    whatsapp: (document.getElementById('cfg-whatsapp')?.value || '').replace(/\D/g, ''),
+    whatsapp2: (document.getElementById('cfg-whatsapp2')?.value || '').replace(/\D/g, ''),
+    email: document.getElementById('cfg-email')?.value || s.email,
+    address: document.getElementById('cfg-address')?.value || s.address,
+    number_prefix: document.getElementById('cfg-numberPrefix')?.value || s.number_prefix,
+    default_conditions: document.getElementById('cfg-defaultConditions')?.value || '',
+    logo: s.logo || null
+  };
+
+  const { error } = await supabaseClient.from('settings').update(updatedSettings).eq('id', 1);
+  if (error) { showToast('Erro ao salvar configurações.', 'error'); } 
+  else { await loadDB(); renderApp(); showToast('Configurações salvas!', 'success'); }
+}
+
+function openClientModal(clientId = null) {
+  const c = clientId ? window.db.users.find(u => u.id === clientId) : null;
+  openModal(c ? 'Editar Cliente' : 'Novo Cliente', `
+    <div class="flex flex-col gap-1">
+      <input type="hidden" id="cl-id" value="${c ? c.id : ''}">
+      <div><label class="label">Nome</label><input class="input" id="cl-name" value="${c ? escapeHtml(c.name) : ''}"></div>
+      <div><label class="label">E-mail</label><input class="input" id="cl-email" type="email" value="${c ? escapeHtml(c.email) : ''}"></div>
+      <div><label class="label">CPF/CNPJ</label><input class="input" id="cl-document" value="${c ? escapeHtml(c.document || '') : ''}"></div>
+      <div><label class="label">Telefone</label><input class="input" id="cl-phone" value="${c ? escapeHtml(c.phone || '') : ''}"></div>
+      ${!c ? '<div><label class="label">Senha</label><input class="input" id="cl-password" type="password" placeholder="Senha de acesso"></div>' : ''}
+      <button type="button" class="btn btn-primary mt-1" data-action="save-client"><i data-lucide="save"></i> Salvar</button>
+    </div>`);
+}
+
+function openMaterialModal(materialId = null) {
+  const m = materialId ? window.db.materials.find(x => x.id === materialId) : null;
+  const categories = ["MDFs", "Fitas", "Ferragens", "Puxadores", "Outros"];
+  openModal(m ? 'Editar Material' : 'Novo Material', `
+    <div class="flex flex-col gap-1">
+      <input type="hidden" id="mat-id" value="${m ? m.id : ''}">
+      <div><label class="label">Nome</label><input class="input" id="mat-name" value="${m ? escapeHtml(m.name) : ''}"></div>
+      <div><label class="label">Descrição</label><input class="input" id="mat-desc" value="${m ? escapeHtml(m.description || '') : ''}"></div>
+      <div><label class="label">Preço (R$)</label><input class="input" id="mat-price" type="number" step="0.01" min="0" value="${m ? m.price : ''}"></div>
+      <div><label class="label">Unidade (un, m, m², pct)</label><input class="input" id="mat-unit" value="${m ? escapeHtml(m.unit) : 'un'}"></div>
+      <div>
+        <label class="label">Categoria</label>
+        <select class="select" id="mat-category">
+          ${categories.map(c => `<option value="${c}" ${m && m.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <button type="button" class="btn btn-primary mt-1" data-action="save-material"><i data-lucide="save"></i> Salvar</button>
+    </div>`);
+}
+
+// ============================================================
+// EVENTOS DE CLIQUE
+// ============================================================
+document.addEventListener('click', async (e) => {
+  const overlay = e.target.closest('.modal-overlay');
+  if (overlay && e.target === overlay) { closeModal(); return; }
+  const target = e.target.closest('[data-action]');
+  if (!target) return;
+  const action = target.dataset.action;
+
+  if (action === 'logout') { sessionStorage.removeItem('madprime_user'); window.location.href = 'index.html'; return; }
+  if (action === 'navigate') { navigate(target.dataset.page); return; }
+  if (action === 'close-modal') { closeModal(); return; }
+
+  if (action === 'filter-materials') { materialFilter = target.dataset.cat; renderApp(); return; }
+
+  if (action === 'new-client') { openClientModal(); return; }
+  if (action === 'edit-client') { openClientModal(target.dataset.id); return; }
+  if (action === 'new-material') { openMaterialModal(); return; }
+  if (action === 'edit-material') { openMaterialModal(target.dataset.id); return; }
+  if (action === 'new-cut-plan') { openNewCutPlanModal(); return; }
+  if (action === 'edit-cut-plan') { openEditCutPlanModal(target.dataset.id); return; }
+  if (action === 'view-cut-plan') { openCutPlanViewModal(target.dataset.id); return; }
+  if (action === 'new-budget') { openNewBudgetModal(); return; }
+  if (action === 'edit-budget') { openEditBudgetModal(target.dataset.id); return; }
+  if (action === 'view-budget') { openBudgetViewModal(target.dataset.id); return; }
+  
+  if (action === 'save-client') { saveClient(); return; }
+  if (action === 'save-material') { saveMaterial(); return; }
+  if (action === 'save-cut-plan') { 
+    const nameInput = document.getElementById('cut-name-input'); 
+    if (nameInput) cutState.name = nameInput.value; 
+    saveCutPlan(); return; 
+  }
+  if (action === 'update-cut-plan') { 
+    const nameInput = document.getElementById('cut-name-input'); 
+    if (nameInput) cutState.name = nameInput.value; 
+    updateCutPlan(); return; 
+  }
+  if (action === 'save-budget') { saveBudget(); return; }
+  if (action === 'update-budget') { updateBudget(); return; }
+  if (action === 'save-settings') { saveSettings(); return; }
+
+  // PDFs e WhatsApp
+  if (action === 'pdf-cut-plan') { downloadPDF('cut', target.dataset.id); return; }
+  if (action === 'share-cut-plan-whatsapp') { sharePDFWhatsApp('cut', target.dataset.id); return; }
+  if (action === 'pdf-budget') { downloadPDF('budget', target.dataset.id); return; }
+  if (action === 'share-pdf-whatsapp') { sharePDFWhatsApp('budget', target.dataset.id); return; }
+
+  if (action === 'approve-cut-plan') {
+    await supabaseClient.from('cutting_plans').update({status: 'approved'}).eq('id', target.dataset.id); 
+    await loadDB(); renderApp(); showToast('Plano aprovado!', 'success'); return;
+  }
+  if (action === 'refuse-cut-plan') {
+    await supabaseClient.from('cutting_plans').update({status: 'refused'}).eq('id', target.dataset.id); 
+    await loadDB(); renderApp(); showToast('Plano recusado.', 'warning'); return;
+  }
+  if (action === 'delete-cut-plan') {
+    if (!confirm('Excluir este plano de corte?')) return;
+    await supabaseClient.from('cutting_plans').delete().eq('id', target.dataset.id); 
+    await loadDB(); renderApp(); showToast('Plano excluído.', 'info'); return;
+  }
+  if (action === 'approve-budget') {
+    await supabaseClient.from('budgets').update({status: 'approved'}).eq('id', target.dataset.id); 
+    await loadDB(); renderApp(); showToast('Orçamento aprovado!', 'success'); return;
+  }
+  if (action === 'refuse-budget') {
+    await supabaseClient.from('budgets').update({status: 'refused'}).eq('id', target.dataset.id); 
+    await loadDB(); renderApp(); showToast('Orçamento recusado.', 'warning'); return;
+  }
+  if (action === 'delete-budget') {
+    if (!confirm('Excluir este orçamento?')) return;
+    await supabaseClient.from('budgets').delete().eq('id', target.dataset.id); 
+    await loadDB(); renderApp(); showToast('Orçamento excluído.', 'info'); return;
+  }
+  if (action === 'delete-client') {
+    if (!confirm('Excluir cliente?')) return;
+    await supabaseClient.from('users').delete().eq('id', target.dataset.id); 
+    await loadDB(); renderApp(); showToast('Cliente excluído.', 'info'); return;
+  }
+  if (action === 'delete-material') {
+    if (!confirm('Excluir material?')) return;
+    await supabaseClient.from('materials').delete().eq('id', target.dataset.id); 
+    await loadDB(); renderApp(); showToast('Material excluído.', 'info'); return;
+  }
+  if (action === 'toggle-client') {
+    const c = window.db.users.find(x => x.id === target.dataset.id);
+    if (c) { await supabaseClient.from('users').update({active: !c.active}).eq('id', c.id); await loadDB(); renderApp(); }
+    return;
+  }
+  if (action === 'toggle-material') {
+    const m = window.db.materials.find(x => x.id === target.dataset.id);
+    if (m) { await supabaseClient.from('materials').update({active: !m.active}).eq('id', m.id); await loadDB(); renderApp(); }
+    return;
+  }
+
+  if (action === 'budget-tab') {
+    budgetState.mobileTab = target.dataset.tab;
+    document.querySelectorAll('.budget-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === budgetState.mobileTab));
+    document.querySelector('.catalog-panel').classList.toggle('active', budgetState.mobileTab === 'catalog');
+    document.querySelector('.cart-panel').classList.toggle('active', budgetState.mobileTab === 'cart');
+    return;
+  }
+  if (action === 'catalog-category') {
+    budgetState.category = target.dataset.cat;
+    document.querySelectorAll('.cat-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.cat === budgetState.category));
+    refreshCatalog(); return;
+  }
+  if (action === 'clear-catalog-search') {
+    budgetState.search = ''; 
+    renderBudgetModal(); return;
+  }
+  if (action === 'add-to-cart') {
+    const mat = window.db.materials.find(m => m.id === target.dataset.id);
+    if (!mat) return;
+    const existing = budgetState.cart.find(i => i.materialId === mat.id);
+    if (existing) existing.qty++;
+    else budgetState.cart.push({ materialId: mat.id, name: mat.name, price: mat.price, qty: 1 });
+    refreshCart(); refreshCatalog(); showToast('Produto adicionado!', 'success'); return;
+  }
+  if (action === 'inc-qty') {
+    const idx = parseInt(target.dataset.idx);
+    if (budgetState.cart[idx]) { budgetState.cart[idx].qty++; refreshCart(); refreshCatalog(); } return;
+  }
+  if (action === 'dec-qty') {
+    const idx = parseInt(target.dataset.idx);
+    if (budgetState.cart[idx]) {
+      if (budgetState.cart[idx].qty > 1) budgetState.cart[idx].qty--;
+      else budgetState.cart.splice(idx, 1);
+      refreshCart(); refreshCatalog();
+    } return;
+  }
+  if (action === 'remove-cart-item') {
+    const idx = parseInt(target.dataset.idx);
+    if (budgetState.cart[idx]) { budgetState.cart.splice(idx, 1); refreshCart(); refreshCatalog(); } return;
+  }
+  if (action === 'add-free-item') {
+    const desc = document.getElementById('free-item-desc')?.value.trim();
+    const val = parseFloat(document.getElementById('free-item-value')?.value);
+    if (!desc) { showToast('Informe a descrição.', 'error'); return; }
+    if (isNaN(val) || val <= 0) { showToast('Informe um valor válido.', 'error'); return; }
+    budgetState.cart.push({ materialId: null, name: 'Item livre: ' + desc, price: val, qty: 1 });
+    document.getElementById('free-item-desc').value = '';
+    document.getElementById('free-item-value').value = '';
+    refreshCart(); showToast('Item adicionado.', 'success'); return;
+  }
+
+  if (action === 'clear-cut-item') {
+    const idx = parseInt(target.dataset.idx);
+    if (cutState.items[idx]) {
+      cutState.items[idx] = { id: uid('item'), qty: '', height: '', width: '', top: false, bottom: false, left: false, right: false, obs: '' };
+      renderCutPlanModal();
+    } return;
+  }
+  if (action === 'toggle-edge') {
+    const idx = parseInt(target.dataset.idx);
+    const edge = target.dataset.edge;
+    if (cutState.items[idx]) {
+      cutState.items[idx][edge] = !cutState.items[idx][edge];
+      document.querySelectorAll(`[data-action="toggle-edge"][data-idx="${idx}"][data-edge="${edge}"]`).forEach(btn => btn.classList.toggle('active', cutState.items[idx][edge]));
+    } return;
+  }
+  if (action === 'set-unit') {
+    cutState.unit = target.dataset.unit;
+    document.querySelectorAll('.unit-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.unit === cutState.unit));
+    document.querySelectorAll('th')[2].textContent = `Alt. (${cutState.unit})`;
+    document.querySelectorAll('th')[3].textContent = `Larg. (${cutState.unit})`;
+    return;
+  }
+});
+
+// Evento de digitação
+document.addEventListener('input', (e) => {
+  if (e.target.dataset.cutField) {
+    const idx = parseInt(e.target.dataset.idx);
+    if (cutState.items[idx]) cutState.items[idx][e.target.dataset.cutField] = e.target.value;
+  }
+  if (e.target.id === 'cut-name-input') cutState.name = e.target.value;
+  
+  if (e.target.id === 'catalog-search-input') {
+    budgetState.search = e.target.value;
+    refreshCatalog();
+    const box = e.target.closest('.search-box');
+    const existingClear = box?.querySelector('.clear-search');
+    if (e.target.value && !existingClear) {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'clear-search'; btn.dataset.action = 'clear-catalog-search'; btn.innerHTML = '<i data-lucide="x"></i>';
+      box.appendChild(btn); lucide.createIcons();
+    } else if (!e.target.value && existingClear) { existingClear.remove(); }
+    return;
+  }
+});
+
+// Upload da Logo
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'cfg-logo') {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { window.db.settings.logo = ev.target.result; showToast('Logo carregada! Salve para confirmar.', 'info'); };
+    reader.readAsDataURL(file);
+  }
+  if (e.target.dataset.action === 'set-material') {
+    cutState.materialPadrao = e.target.value;
+  }
+});
