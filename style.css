@@ -811,22 +811,29 @@ body:has(.login-wrapper) #app {
 .cut-table input:focus { border-color: var(--primary); background: rgba(77, 124, 254, 0.05); }
 .cut-table input::placeholder { color: var(--text-secondary); opacity: 0.3; }
 
-/* NOVO VISUAL DA FITA (ESTILO DA IMAGEM) */
+/* ============================================================
+   FITA VISUAL — GRID 3x3 (CORRIGIDO)
+   ============================================================ */
 .fita-visual-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 6px 26px 6px;
+  grid-template-rows: 6px 26px 6px;
   align-items: center;
+  justify-items: center;
   justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  margin: 0 auto;
+  width: fit-content;
+  gap: 0;
 }
 
-.fita-box-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-}
+/* Posicionamento no grid */
+.fita-bar-top    { grid-column: 2; grid-row: 1; }
+.fita-bar-left   { grid-column: 1; grid-row: 2; }
+.fita-square     { grid-column: 2; grid-row: 2; }
+.fita-bar-right  { grid-column: 3; grid-row: 2; }
+.fita-bar-bottom { grid-column: 2; grid-row: 3; }
 
+/* Quadrado central */
 .fita-square {
   width: 26px;
   height: 26px;
@@ -839,53 +846,49 @@ body:has(.login-wrapper) #app {
 }
 
 .fita-square span {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: #a0aec0;
   user-select: none;
+  line-height: 1;
 }
 
-/* Barras de Fita (Inativas) */
-.fita-bar-top, .fita-bar-bottom, .fita-bar-left, .fita-bar-right {
+/* Barras de Fita — base */
+.fita-bar {
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: all 0.2s ease;
-  position: relative;
+  transition: background 0.2s ease;
+  border-radius: 2px;
 }
 
-.fita-bar-top, .fita-bar-bottom {
+/* Dimensões das barras */
+.fita-bar-top,
+.fita-bar-bottom {
   width: 26px;
   height: 6px;
 }
-
-.fita-bar-left, .fita-bar-right {
+.fita-bar-left,
+.fita-bar-right {
   width: 6px;
   height: 26px;
 }
 
-/* Cores ao ativar (Vermelho como na imagem) */
-.fita-bar-top.active {
-  background: #e53e3e;
-  border-radius: 2px 2px 0 0;
-}
-.fita-bar-bottom.active {
-  background: #e53e3e;
-  border-radius: 0 0 2px 2px;
-}
-.fita-bar-left.active {
-  background: #e53e3e;
-  border-radius: 2px 0 0 2px;
-}
-.fita-bar-right.active {
-  background: #e53e3e;
-  border-radius: 0 2px 2px 0;
+/* Hover / toque */
+.fita-bar-top:hover,
+.fita-bar-bottom:hover,
+.fita-bar-left:hover,
+.fita-bar-right:hover {
+  background: rgba(229, 62, 62, 0.3);
 }
 
-/* Efeito hover para cliques no celular */
-.fita-bar-top:hover, .fita-bar-bottom:hover, .fita-bar-left:hover, .fita-bar-right:hover {
-  background: rgba(229, 62, 62, 0.3);
+/* Estado ativo (fita aplicada) */
+.fita-bar-top.active,
+.fita-bar-bottom.active,
+.fita-bar-left.active,
+.fita-bar-right.active {
+  background: #e53e3e;
 }
 
 /* Fullscreen Modal Override */
