@@ -426,29 +426,31 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-qty" data-cut-field="qty" data-idx="${idx}" value="${item.qty}" min="1" placeholder="1"></td>
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
-      <td style="padding: 0.5rem; text-align: center;">
-        <div class="edge-selector">
-          <div class="edge-row">
-            <span class="edge-label">L</span>
-            <button type="button" class="edge-btn-h ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Largura)"></button>
-            <span class="edge-label">L</span>
-          </div>
+      <td style="padding: 0.5rem;">
+        <div class="fita-container">
           
-          <div class="edge-row middle">
-            <span class="edge-label">A</span>
-            <button type="button" class="edge-btn-v ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Altura)"></button>
-            <div class="piece-center">
-              <span>PEÇA</span>
+          <!-- Quadradinho de Altura -->
+          <div class="fita-box">
+            <span class="fita-title">ALTURA</span>
+            <div class="fita-piece">
+              <button type="button" class="edge-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Altura)"></button>
+              <button type="button" class="edge-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Altura)"></button>
+              <button type="button" class="edge-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Altura)"></button>
+              <button type="button" class="edge-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Altura)"></button>
             </div>
-            <button type="button" class="edge-btn-v ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Altura)"></button>
-            <span class="edge-label">A</span>
           </div>
-          
-          <div class="edge-row">
-            <span class="edge-label">L</span>
-            <button type="button" class="edge-btn-h ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Largura)"></button>
-            <span class="edge-label">L</span>
+
+          <!-- Quadradinho de Largura -->
+          <div class="fita-box">
+            <span class="fita-title">LARGURA</span>
+            <div class="fita-piece">
+              <button type="button" class="edge-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Largura)"></button>
+              <button type="button" class="edge-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Largura)"></button>
+              <button type="button" class="edge-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Largura)"></button>
+              <button type="button" class="edge-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Largura)"></button>
+            </div>
           </div>
+
         </div>
       </td>
     </tr>
