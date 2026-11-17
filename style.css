@@ -811,10 +811,11 @@ body:has(.login-wrapper) #app {
 .cut-table input:focus { border-color: var(--primary); background: rgba(77, 124, 254, 0.05); }
 .cut-table input::placeholder { color: var(--text-secondary); opacity: 0.3; }
 
-/* VISUAL DA FITA (C1, C2, L1, L2 - borda tracejada + barra na lateral) */
+/* VISUAL DA FITA (A1, A2, L1, L2 - borda tracejada + barra na lateral) */
 .fita-container {
   display: flex;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 12px;
   justify-content: center;
   align-items: center;
 }
@@ -822,13 +823,15 @@ body:has(.login-wrapper) #app {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex: 0 0 auto;
   padding: 0;
   background: transparent;
   border: none;
 }
 .fita-piece {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
   position: relative;
   box-sizing: border-box;
   border: 2px dashed var(--text-secondary);
@@ -839,25 +842,38 @@ body:has(.login-wrapper) #app {
   justify-content: center;
 }
 .fita-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   line-height: 1;
   color: var(--text);
-  letter-spacing: 0;
   margin: 0;
   pointer-events: none;
   user-select: none;
 }
-/* Barra da fita: cinza quando inativa, vermelha quando ativa */
-.fita-piece [class^="edge-"] {
+
+/* Botões das laterais (área de clique) */
+.fita-piece .edge-top,
+.fita-piece .edge-bottom,
+.fita-piece .edge-left,
+.fita-piece .edge-right {
   position: absolute;
   background: transparent;
   border: none;
   padding: 0;
+  margin: 0;
   cursor: pointer;
   z-index: 2;
 }
-.fita-piece [class^="edge-"]::after {
+.fita-piece .edge-top    { top: -6px;    left: -4px; right: -4px;  height: 12px; }
+.fita-piece .edge-bottom { bottom: -6px; left: -4px; right: -4px;  height: 12px; }
+.fita-piece .edge-left   { left: -6px;   top: -4px;  bottom: -4px; width: 12px; }
+.fita-piece .edge-right  { right: -6px;  top: -4px;  bottom: -4px; width: 12px; }
+
+/* Barra da fita: cinza quando inativa, vermelha quando ativa */
+.fita-piece .edge-top::after,
+.fita-piece .edge-bottom::after,
+.fita-piece .edge-left::after,
+.fita-piece .edge-right::after {
   content: '';
   position: absolute;
   background: var(--text-secondary);
@@ -865,48 +881,33 @@ body:has(.login-wrapper) #app {
   border-radius: 1px;
   transition: all 0.15s;
 }
-.fita-piece [class^="edge-"].active::after {
+.fita-piece .edge-top::after    { top: 0;    left: 0; right: 0;  height: 5px; }
+.fita-piece .edge-bottom::after { bottom: 0; left: 0; right: 0;  height: 5px; }
+.fita-piece .edge-left::after   { left: 0;   top: 0;  bottom: 0; width: 5px; }
+.fita-piece .edge-right::after  { right: 0;  top: 0;  bottom: 0; width: 5px; }
+.fita-piece .edge-top.active::after,
+.fita-piece .edge-bottom.active::after,
+.fita-piece .edge-left.active::after,
+.fita-piece .edge-right.active::after {
   background: var(--red);
   opacity: 1;
   box-shadow: 0 0 4px rgba(239, 64, 86, 0.6);
 }
-.fita-piece .edge-top    { top: -6px;    left: -4px; right: -4px; height: 12px; }
-.fita-piece .edge-bottom { bottom: -6px; left: -4px; right: -4px; height: 12px; }
-.fita-piece .edge-left   { left: -6px;   top: -4px;  bottom: -4px; width: 12px; }
-.fita-piece .edge-right  { right: -6px;  top: -4px;  bottom: -4px; width: 12px; }
-.fita-piece .edge-top::after    { top: 0;    left: 0; right: 0; height: 5px; }
-.fita-piece .edge-bottom::after { bottom: 0; left: 0; right: 0; height: 5px; }
-.fita-piece .edge-left::after   { left: 0;   top: 0; bottom: 0; width: 5px; }
-.fita-piece .edge-right::after  { right: 0;  top: 0; bottom: 0; width: 5px; }
 
-/* FITA - RESPONSIVO (celular e desktop) */
-/* Desktop / tablet: quatro quadradinhos em uma linha, coluna da fita mais larga */
-@media (min-width: 768px) {
-  .cut-table th:nth-child(1) { width: 8% !important; }
-  .cut-table th:nth-child(2) { width: 12% !important; }
-  .cut-table th:nth-child(3) { width: 20% !important; }
-  .cut-table th:nth-child(4) { width: 20% !important; }
-  .cut-table th:nth-child(5) { width: 40% !important; }
-  .fita-container { gap: 12px; flex-wrap: nowrap; }
-  .fita-box { flex: 0 0 auto; }
-  .fita-piece { width: 36px; height: 36px; }
-  .fita-title { font-size: 12px; }
-}
-/* Celular: quadradinhos em linha reta (A1 A2 L1 L2), menores, com a coluna da fita mais larga */
+/* Celular: quadradinhos em linha reta, menores. A tabela rola na horizontal se a tela for estreita */
 @media (max-width: 767px) {
-  /* larguras em px: a fita sempre aparece inteira; se a tela for estreita, a tabela rola na horizontal */
   .cut-table { min-width: 360px; }
   .cut-table th:nth-child(1) { width: 34px !important; }
   .cut-table th:nth-child(2) { width: 50px !important; }
   .cut-table th:nth-child(3) { width: 62px !important; }
   .cut-table th:nth-child(4) { width: 62px !important; }
   .cut-table th:nth-child(5) { width: 152px !important; }
-  .cut-table td:nth-child(5) { padding: 0.5rem 0.2rem !important; overflow: visible; }
-  .fita-container { display: flex; flex-wrap: nowrap; gap: 10px; justify-content: center; align-items: center; width: max-content; margin: 0 auto; }
-  .fita-box { flex: 0 0 auto; }
-  .fita-piece { width: 26px; height: 26px; border-width: 2px; flex: 0 0 auto; }
+  .cut-table td:nth-child(5) { padding: 0.5rem 0.2rem !important; }
+  .cut-table th { font-size: 0.65rem; padding: 0.6rem 0.2rem; }
+  .cut-table input { padding: 0.6rem 0.1rem; font-size: 0.85rem; }
+  .fita-container { gap: 10px; }
+  .fita-piece { width: 26px; height: 26px; }
   .fita-title { font-size: 9px; }
-  /* área de toque das laterais, sem invadir o quadradinho vizinho */
   .fita-piece .edge-top, .fita-piece .edge-bottom { height: 14px; }
   .fita-piece .edge-left, .fita-piece .edge-right { width: 12px; }
   .fita-piece .edge-top { top: -7px; }
@@ -915,10 +916,7 @@ body:has(.login-wrapper) #app {
   .fita-piece .edge-right { right: -6px; }
   .fita-piece .edge-top::after, .fita-piece .edge-bottom::after { height: 4px; }
   .fita-piece .edge-left::after, .fita-piece .edge-right::after { width: 4px; }
-  .cut-table th { font-size: 0.65rem; padding: 0.6rem 0.2rem; }
-  .cut-table input { padding: 0.6rem 0.1rem; font-size: 0.85rem; }
 }
-/* Telas muito pequenas */
 @media (max-width: 360px) {
   .fita-container { gap: 8px; }
   .fita-piece { width: 24px; height: 24px; }
