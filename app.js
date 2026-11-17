@@ -428,11 +428,31 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
       <td style="padding: 0.5rem; text-align: center;">
         <div class="fita-visual-row">
-          <button type="button" class="fita-bar fita-bar-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (C1)"></button>
-          <button type="button" class="fita-bar fita-bar-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (L1)"></button>
-          <div class="fita-square"><span>C1</span></div>
-          <button type="button" class="fita-bar fita-bar-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (L2)"></button>
-          <button type="button" class="fita-bar fita-bar-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (C2)"></button>
+
+          <!-- C1 -->
+          <div class="fita-box-item">
+            <div class="fita-bar-left ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Largura)"></div>
+            <div class="fita-square"><span>C1</span></div>
+          </div>
+
+          <!-- C2 -->
+          <div class="fita-box-item">
+            <div class="fita-square"><span>C2</span></div>
+            <div class="fita-bar-right ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Largura)"></div>
+          </div>
+
+          <!-- L1 -->
+          <div class="fita-box-item">
+            <div class="fita-square"><span>L1</span></div>
+            <div class="fita-bar-bottom ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Altura)"></div>
+          </div>
+
+          <!-- L2 -->
+          <div class="fita-box-item">
+            <div class="fita-bar-top ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Altura)"></div>
+            <div class="fita-square"><span>L2</span></div>
+          </div>
+
         </div>
       </td>
     </tr>
