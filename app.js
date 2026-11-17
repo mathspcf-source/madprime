@@ -3,6 +3,15 @@ let budgetState = { cart: [], category: 'all', search: '', editId: null, editing
 let cutState = { editId: null, editNumber: '', items: [], unit: 'cm', materialPadrao: 'MDF Branco 18mm', name: '' };
 let materialFilter = 'all';
 
+// Mapeamento da fita: C1/C2 = laterais, L1/L2 = topo e base
+// (os campos salvos no banco continuam left/right/top/bottom)
+const FITA_EDGES = [
+  { edge: 'left',   label: 'C1' },
+  { edge: 'right',  label: 'C2' },
+  { edge: 'top',    label: 'L1' },
+  { edge: 'bottom', label: 'L2' }
+];
+
 // ============================================================
 // FUNÇÕES AUXILIARES
 // ============================================================
@@ -402,11 +411,11 @@ function renderCutPlanModal() {
         <table class="cut-table">
           <thead>
             <tr>
-              <th style="width: 14%;">Peça</th>
-              <th style="width: 16%;">Qtd</th>
-              <th style="width: 26%;">Larg. (${cutState.unit})</th>
-              <th style="width: 26%;">Alt. (${cutState.unit})</th>
-              <th style="width: 18%;">Fita</th>
+              <th style="width: 10%;">Peça</th>
+              <th style="width: 14%;">Qtd</th>
+              <th style="width: 20%;">Larg. (${cutState.unit})</th>
+              <th style="width: 20%;">Alt. (${cutState.unit})</th>
+              <th style="width: 36%;">Fita</th>
             </tr>
           </thead>
           <tbody id="cut-tbody">
@@ -421,52 +430,20 @@ function renderCutPlanModal() {
 function renderCutRow(item, idx) {
   const isEmpty = !item.height && !item.width;
   return `
-    <tr data-cut-row="${idx}" style="${isEmpty ? 'background: rgba(255,255,255,0.02);' : ''} height: 60px;">
+    <tr data-cut-row="${idx}" style="${isEmpty ? 'background: rgba(255,255,255,0.02);' : ''} height: 56px;">
       <td style="text-align:center; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">${idx + 1}</td>
       <td><input type="number" class="input-qty" data-cut-field="qty" data-idx="${idx}" value="${item.qty}" min="1" placeholder="1"></td>
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
-      <td style="vertical-align: middle;">
-        <div style="display: flex; align-items: center; justify-content: center; position: relative; width: 100%; height: 100%;">
-
-          <!-- L1 (Esquerda) -->
-          <div style="display: flex; align-items: center; gap: 2px; margin-right: 4px;">
-            <span style="font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L1</span>
-            <div style="width: 6px; height: 1px; background: var(--text-secondary);"></div>
-          </div>
-
-          <!-- Quadrado Central -->
-          <div class="piece-visual" style="width: 24px; height: 24px; position: relative; flex-shrink: 0; margin: 0 8px;">
-            
-            <!-- A1 (Topo) -->
-            <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
-              <span style="font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A1</span>
-              <div style="width: 1px; height: 4px; background: var(--text-secondary);"></div>
-            </div>
-
-            <!-- A2 (Base) -->
-            <div style="position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px;">
-              <div style="width: 1px; height: 4px; background: var(--text-secondary);"></div>
-              <span style="font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1;">A2</span>
-            </div>
-
-            <!-- Botões das Bordas -->
-            <button type="button" class="edge-btn top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="A1 (Topo)"></button>
-            <button type="button" class="edge-btn bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="A2 (Base)"></button>
-            <button type="button" class="edge-btn left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="L1 (Esquerda)"></button>
-            <button type="button" class="edge-btn right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="L2 (Direita)"></button>
-          </div>
-
-          <!-- L2 (Direita) -->
-          <div style="display: flex; align-items: center; gap: 2px; margin-left: 4px;">
-            <div style="width: 6px; height: 1px; background: var(--text-secondary);"></div>
-            <span style="font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1;">L2</span>
-          </div>
-
+      <td>
+        <div class="fita-group">
+          ${FITA_EDGES.map(f => `
+            <button type="button" class="fita-btn ${f.edge} ${item[f.edge] ? 'active' : ''}"
+              data-action="toggle-edge" data-idx="${idx}" data-edge="${f.edge}"
+              title="${f.label}">${f.label}</button>`).join('')}
         </div>
       </td>
-    </tr>
-  `;
+    </tr>`;
 }
 
 function updateCutItem(idx, field, value) {
@@ -486,9 +463,8 @@ function openCutPlanViewModal(planId) {
           <span class="badge badge-pending">${item.qty || 1}x</span>
         </div>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Dimensões:</strong> ${item.width}${c.unit || 'cm'} (L) x ${item.height}${c.unit || 'cm'} (A)</p>
-        <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong> 
-          ${item.top ? 'A1 ' : ''}${item.bottom ? 'A2 ' : ''}${item.left ? 'L1 ' : ''}${item.right ? 'L2' : ''}
-          ${!item.top && !item.bottom && !item.left && !item.right ? 'Nenhuma' : ''}
+        <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong>
+          ${[item.left && 'C1', item.right && 'C2', item.top && 'L1', item.bottom && 'L2'].filter(Boolean).join(' ') || 'Nenhuma'}
         </p>
       </div>
     `;
@@ -690,6 +666,22 @@ function getCompanyInfo() {
   };
 }
 
+// Ícones de fita para o PDF (C1, C2, L1, L2 com barra vermelha quando ativo)
+function fitaIconsPDF(i) {
+  const bar = {
+    left:   'left:-2px; top:-1px; bottom:-1px; width:4px;',
+    right:  'right:-2px; top:-1px; bottom:-1px; width:4px;',
+    top:    'top:-2px; left:-1px; right:-1px; height:4px;',
+    bottom: 'bottom:-2px; left:-1px; right:-1px; height:4px;'
+  };
+  return `<div style="display:flex; justify-content:center; gap:5px;">` +
+    FITA_EDGES.map(f => `
+      <div style="position:relative; width:28px; height:22px; border:1px dashed #666; border-radius:3px; font-size:9px; font-weight:700; color:#000; display:flex; align-items:center; justify-content:center;">
+        ${f.label}
+        ${i[f.edge] ? `<div style="position:absolute; ${bar[f.edge]} background:#e53935;"></div>` : ''}
+      </div>`).join('') + `</div>`;
+}
+
 function buildCutPlanHTML(c) {
   const s = getCompanyInfo();
   const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
@@ -734,7 +726,7 @@ function buildCutPlanHTML(c) {
             <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
             <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
             <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:110px; border-radius:0 4px 4px 0;">Fita</th>
+            <th style="text-align:center; padding:10px; width:150px; border-radius:0 4px 4px 0;">Fita</th>
           </tr>
         </thead>
         <tbody>
@@ -744,44 +736,7 @@ function buildCutPlanHTML(c) {
               <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
-              <td style="text-align:center; padding:12px 10px; vertical-align: middle;">
-                <div style="display:flex; align-items:center; justify-content:center; position:relative; width:100%; height:100%;">
-
-                  <!-- L1 (Esquerda) -->
-                  <div style="display:flex; align-items:center; gap:1px; margin-right:4px;">
-                    <span style="font-size:7px; font-weight:700; color:#000; line-height:1;">L1</span>
-                    <div style="width:6px; height:1px; background:#000;"></div>
-                  </div>
-
-                  <!-- Quadrado 20x20 -->
-                  <div style="width:20px; height:20px; position:relative; border:1px solid #ccc; flex-shrink:0; margin: 0 6px;">
-
-                    <!-- A1 (Topo) -->
-                    <div style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
-                      <span style="font-size:7px; font-weight:700; color:#000; line-height:1;">A1</span>
-                      <div style="width:1px; height:4px; background:#000;"></div>
-                    </div>
-
-                    <!-- A2 (Base) -->
-                    <div style="position:absolute; bottom:-12px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:1px;">
-                      <div style="width:1px; height:4px; background:#000;"></div>
-                      <span style="font-size:7px; font-weight:700; color:#000; line-height:1;">A2</span>
-                    </div>
-
-                    ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
-                    ${i.bottom ? '<div style="position:absolute; bottom:0; left:0; right:0; height:3px; background:#000; z-index:2;"></div>' : ''}
-                    ${i.left ? '<div style="position:absolute; top:0; bottom:0; left:0; width:3px; background:#000; z-index:2;"></div>' : ''}
-                    ${i.right ? '<div style="position:absolute; top:0; bottom:0; right:0; width:3px; background:#000; z-index:2;"></div>' : ''}
-                  </div>
-
-                  <!-- L2 (Direita) -->
-                  <div style="display:flex; align-items:center; gap:1px; margin-left:4px;">
-                    <div style="width:6px; height:1px; background:#000;"></div>
-                    <span style="font-size:7px; font-weight:700; color:#000; line-height:1;">L2</span>
-                  </div>
-
-                </div>
-              </td>
+              <td style="text-align:center; padding:12px 10px; vertical-align:middle;">${fitaIconsPDF(i)}</td>
             </tr>`).join('')}
         </tbody>
       </table>
