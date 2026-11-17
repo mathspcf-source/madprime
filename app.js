@@ -3,15 +3,6 @@ let budgetState = { cart: [], category: 'all', search: '', editId: null, editing
 let cutState = { editId: null, editNumber: '', items: [], unit: 'cm', materialPadrao: 'MDF Branco 18mm', name: '' };
 let materialFilter = 'all';
 
-// Mapeamento da fita: C1/C2 = laterais, L1/L2 = topo e base
-// (os campos salvos no banco continuam left/right/top/bottom)
-const FITA_EDGES = [
-  { edge: 'left',   label: 'C1' },
-  { edge: 'right',  label: 'C2' },
-  { edge: 'top',    label: 'L1' },
-  { edge: 'bottom', label: 'L2' }
-];
-
 // ============================================================
 // FUNÇÕES AUXILIARES
 // ============================================================
@@ -348,7 +339,7 @@ function openNewCutPlanModal() {
   cutState.materialPadrao = 'MDF Branco 18mm';
   cutState.name = '';
   cutState.items = Array.from({ length: 100 }, () => ({
-    id: uid('item'), qty: '', width: '', height: '', top: false, bottom: false, left: false, right: false, obs: ''
+    id: uid('item'), qty: '', height: '', width: '', top: false, bottom: false, left: false, right: false, obs: ''
   }));
   renderCutPlanModal();
 }
@@ -366,7 +357,7 @@ function openEditCutPlanModal(planId) {
   const savedItems = c.items.map(i => ({ ...i }));
   const emptyItemsNeeded = 100 - savedItems.length;
   const emptyItems = Array.from({ length: Math.max(0, emptyItemsNeeded) }, () => ({
-    id: uid('item'), qty: '', width: '', height: '', top: false, bottom: false, left: false, right: false, obs: ''
+    id: uid('item'), qty: '', height: '', width: '', top: false, bottom: false, left: false, right: false, obs: ''
   }));
   cutState.items = [...savedItems, ...emptyItems];
   renderCutPlanModal();
@@ -412,10 +403,10 @@ function renderCutPlanModal() {
           <thead>
             <tr>
               <th style="width: 10%;">Peça</th>
-              <th style="width: 14%;">Qtd</th>
-              <th style="width: 20%;">Larg. (${cutState.unit})</th>
-              <th style="width: 20%;">Alt. (${cutState.unit})</th>
-              <th style="width: 36%;">Fita</th>
+              <th style="width: 15%;">Qtd</th>
+              <th style="width: 25%;">Larg. (${cutState.unit})</th>
+              <th style="width: 25%;">Alt. (${cutState.unit})</th>
+              <th style="width: 25%;">Fita</th>
             </tr>
           </thead>
           <tbody id="cut-tbody">
@@ -430,20 +421,42 @@ function renderCutPlanModal() {
 function renderCutRow(item, idx) {
   const isEmpty = !item.height && !item.width;
   return `
-    <tr data-cut-row="${idx}" style="${isEmpty ? 'background: rgba(255,255,255,0.02);' : ''} height: 56px;">
+    <tr data-cut-row="${idx}" style="${isEmpty ? 'background: rgba(255,255,255,0.02);' : ''}">
       <td style="text-align:center; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">${idx + 1}</td>
       <td><input type="number" class="input-qty" data-cut-field="qty" data-idx="${idx}" value="${item.qty}" min="1" placeholder="1"></td>
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
       <td><input type="number" class="input-dim" data-cut-field="height" data-idx="${idx}" value="${item.height}" placeholder="0"></td>
-      <td>
-        <div class="fita-group">
-          ${FITA_EDGES.map(f => `
-            <button type="button" class="fita-btn ${f.edge} ${item[f.edge] ? 'active' : ''}"
-              data-action="toggle-edge" data-idx="${idx}" data-edge="${f.edge}"
-              title="${f.label}">${f.label}</button>`).join('')}
+      <td style="padding: 0.5rem; text-align: center;">
+        <div class="fita-visual-row">
+          
+          <!-- C1 (Topo - Largura) -->
+          <div class="fita-box-item">
+            <button type="button" class="fita-bar-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita no Topo (Largura)"></button>
+            <div class="fita-square"><span>C1</span></div>
+          </div>
+
+          <!-- C2 (Base - Largura) -->
+          <div class="fita-box-item">
+            <div class="fita-square"><span>C2</span></div>
+            <button type="button" class="fita-bar-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Base (Largura)"></button>
+          </div>
+
+          <!-- L1 (Esquerda - Altura) -->
+          <div class="fita-box-item" style="flex-direction: row;">
+            <button type="button" class="fita-bar-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Esquerda (Altura)"></button>
+            <div class="fita-square"><span>L1</span></div>
+          </div>
+
+          <!-- L2 (Direita - Altura) -->
+          <div class="fita-box-item" style="flex-direction: row;">
+            <div class="fita-square"><span>L2</span></div>
+            <button type="button" class="fita-bar-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Direita (Altura)"></button>
+          </div>
+
         </div>
       </td>
-    </tr>`;
+    </tr>
+  `;
 }
 
 function updateCutItem(idx, field, value) {
@@ -463,8 +476,9 @@ function openCutPlanViewModal(planId) {
           <span class="badge badge-pending">${item.qty || 1}x</span>
         </div>
         <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Dimensões:</strong> ${item.width}${c.unit || 'cm'} (L) x ${item.height}${c.unit || 'cm'} (A)</p>
-        <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong>
-          ${[item.left && 'C1', item.right && 'C2', item.top && 'L1', item.bottom && 'L2'].filter(Boolean).join(' ') || 'Nenhuma'}
+        <p style="font-size:0.85rem; margin-bottom:0.2rem;"><strong>Fita:</strong> 
+          ${item.top ? 'Topo ' : ''}${item.bottom ? 'Base ' : ''}${item.left ? 'Esq ' : ''}${item.right ? 'Dir' : ''}
+          ${!item.top && !item.bottom && !item.left && !item.right ? 'Nenhuma' : ''}
         </p>
       </div>
     `;
@@ -666,22 +680,6 @@ function getCompanyInfo() {
   };
 }
 
-// Ícones de fita para o PDF (C1, C2, L1, L2 com barra vermelha quando ativo)
-function fitaIconsPDF(i) {
-  const bar = {
-    left:   'left:-2px; top:-1px; bottom:-1px; width:4px;',
-    right:  'right:-2px; top:-1px; bottom:-1px; width:4px;',
-    top:    'top:-2px; left:-1px; right:-1px; height:4px;',
-    bottom: 'bottom:-2px; left:-1px; right:-1px; height:4px;'
-  };
-  return `<div style="display:flex; justify-content:center; gap:5px;">` +
-    FITA_EDGES.map(f => `
-      <div style="position:relative; width:28px; height:22px; border:1px dashed #666; border-radius:3px; font-size:9px; font-weight:700; color:#000; display:flex; align-items:center; justify-content:center;">
-        ${f.label}
-        ${i[f.edge] ? `<div style="position:absolute; ${bar[f.edge]} background:#e53935;"></div>` : ''}
-      </div>`).join('') + `</div>`;
-}
-
 function buildCutPlanHTML(c) {
   const s = getCompanyInfo();
   const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
@@ -726,17 +724,24 @@ function buildCutPlanHTML(c) {
             <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
             <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
             <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:150px; border-radius:0 4px 4px 0;">Fita</th>
+            <th style="text-align:center; padding:10px; width:80px; border-radius:0 4px 4px 0;">Fita</th>
           </tr>
         </thead>
         <tbody>
           ${c.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6; height: 60px;">
+            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
               <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
               <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
-              <td style="text-align:center; padding:12px 10px; vertical-align:middle;">${fitaIconsPDF(i)}</td>
+              <td style="text-align:center; padding:12px 10px;">
+                <div style="display:inline-block; width:30px; height:30px; position:relative; border:1px solid #ccc;">
+                  ${i.top ? '<div style="position:absolute; top:0; left:0; right:0; height:3px; background:#000;"></div>' : ''}
+                  ${i.bottom ? '<div style="position:absolute; bottom:0; left:0; right:0; height:3px; background:#000;"></div>' : ''}
+                  ${i.left ? '<div style="position:absolute; top:0; bottom:0; left:0; width:3px; background:#000;"></div>' : ''}
+                  ${i.right ? '<div style="position:absolute; top:0; bottom:0; right:0; width:3px; background:#000;"></div>' : ''}
+                </div>
+              </td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -1228,7 +1233,7 @@ document.addEventListener('click', async (e) => {
   if (action === 'clear-cut-item') {
     const idx = parseInt(target.dataset.idx);
     if (cutState.items[idx]) {
-      cutState.items[idx] = { id: uid('item'), qty: '', width: '', height: '', top: false, bottom: false, left: false, right: false, obs: '' };
+      cutState.items[idx] = { id: uid('item'), qty: '', height: '', width: '', top: false, bottom: false, left: false, right: false, obs: '' };
       renderCutPlanModal();
     } return;
   }
