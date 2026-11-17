@@ -933,15 +933,27 @@ async function saveCutPlan() {
   if (validItems.length === 0) { showToast('Preencha pelo menos uma peça com altura e largura.', 'error'); return; }
   
   const user = window.db.users.find(u => u.id === window.currentUser.id);
-  const seq = window.db.cuttingPlans.length + 1;
-  const number = 'PC-2026-' + String(seq).padStart(4, '0');
+  // Próximo número = maior número existente + 1 (evita duplicar quando há planos excluídos ou ocultos)
+  const maxSeq = window.db.cuttingPlans.reduce((max, p) => {
+    const m = /(\d+)\s*$/.exec(p.number || '');
+    return m ? Math.max(max, parseInt(m[1], 10)) : max;
+  }, 0);
+  let seq = Math.max(maxSeq, window.db.cuttingPlans.length) + 1;
 
-  const newCutPlan = {
-    number, name: cutState.name, client_id: window.currentUser.id, client_name: user ? user.name : window.currentUser.name,
+  const basePlan = {
+    name: cutState.name, client_id: window.currentUser.id, client_name: user ? user.name : window.currentUser.name,
     items: validItems.map(i => ({ ...i })), unit: cutState.unit, material_padrao: cutState.materialPadrao, status: 'pending', created_at: new Date().toISOString()
   };
 
-  const { error } = await supabaseClient.from('cutting_plans').insert([newCutPlan]);
+  // Se o número já existir no banco (valor duplicado), tenta o próximo
+  let error = null;
+  for (let attempt = 0; attempt < 15; attempt++) {
+    const number = 'PC-2026-' + String(seq).padStart(4, '0');
+    ({ error } = await supabaseClient.from('cutting_plans').insert([{ number, ...basePlan }]));
+    const isDuplicate = error && (error.code === '23505' || /duplicate|unique/i.test(error.message || ''));
+    if (!isDuplicate) break;
+    seq++;
+  }
   if (error) { console.error('Erro ao salvar plano de corte:', error); showToast('Erro ao salvar no banco: ' + (error.message || 'desconhecido'), 'error'); } 
   else { await loadDB(); closeModal(); renderApp(); showToast('Plano de corte salvo!', 'success'); }
 }
