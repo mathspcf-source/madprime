@@ -942,7 +942,7 @@ async function saveCutPlan() {
   };
 
   const { error } = await supabaseClient.from('cutting_plans').insert([newCutPlan]);
-  if (error) { showToast('Erro ao salvar no banco.', 'error'); } 
+  if (error) { console.error('Erro ao salvar plano de corte:', error); showToast('Erro ao salvar no banco: ' + (error.message || 'desconhecido'), 'error'); } 
   else { await loadDB(); closeModal(); renderApp(); showToast('Plano de corte salvo!', 'success'); }
 }
 
@@ -957,7 +957,7 @@ async function updateCutPlan() {
 
   const updatedCutPlan = { name: cutState.name, items: validItems.map(i => ({ ...i })), unit: cutState.unit, material_padrao: cutState.materialPadrao, updated_at: new Date().toISOString() };
   const { error } = await supabaseClient.from('cutting_plans').update(updatedCutPlan).eq('id', c.id);
-  if (error) { showToast('Erro ao atualizar.', 'error'); } 
+  if (error) { console.error('Erro ao atualizar plano de corte:', error); showToast('Erro ao atualizar: ' + (error.message || 'desconhecido'), 'error'); } 
   else { await loadDB(); closeModal(); renderApp(); showToast('Plano de corte atualizado!', 'success'); }
 }
 
