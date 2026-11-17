@@ -811,85 +811,82 @@ body:has(.login-wrapper) #app {
 .cut-table input:focus { border-color: var(--primary); background: rgba(77, 124, 254, 0.05); }
 .cut-table input::placeholder { color: var(--text-secondary); opacity: 0.3; }
 
-/* FITA: quadradinhos tracejados C1, C2, L1, L2 (barra vermelha quando ativo) */
-.fita-group { display: flex; justify-content: center; align-items: center; gap: 4px; padding: 0 2px; }
-.fita-btn {
+/* NOVO VISUAL DA FITA (ESTILO DA IMAGEM) */
+.fita-visual-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fita-box-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   position: relative;
-  width: 26px; height: 24px;
-  border: 1px dashed var(--text-secondary);
+}
+
+.fita-square {
+  width: 26px;
+  height: 26px;
+  border: 1px dashed #4a5568;
   border-radius: 3px;
-  background: transparent;
-  color: var(--text);
-  font-size: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.fita-square span {
+  font-size: 10px;
   font-weight: 700;
-  font-family: 'Inter', sans-serif;
+  color: #a0aec0;
+  user-select: none;
+}
+
+/* Barras de Fita (Inativas) */
+.fita-bar-top, .fita-bar-bottom, .fita-bar-left, .fita-bar-right {
+  background: transparent;
+  border: none;
+  cursor: pointer;
   padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
+  position: relative;
 }
-.fita-btn::after { content: ''; position: absolute; background: transparent; border-radius: 1px; transition: background 0.15s; }
-.fita-btn.left::after   { left: -2px;  top: -1px; bottom: -1px; width: 4px; }
-.fita-btn.right::after  { right: -2px; top: -1px; bottom: -1px; width: 4px; }
-.fita-btn.top::after    { top: -2px;    left: -1px; right: -1px; height: 4px; }
-.fita-btn.bottom::after { bottom: -2px; left: -1px; right: -1px; height: 4px; }
-.fita-btn.active { border-color: var(--red); }
-.fita-btn.active::after { background: var(--red); }
 
-.row-action {
-  width: 24px; height: 24px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition);
-  margin: 0 auto;
+.fita-bar-top, .fita-bar-bottom {
+  width: 26px;
+  height: 6px;
 }
-.row-action:hover { background: rgba(239, 64, 86, 0.12); color: var(--red); }
-.row-action svg { width: 14px; height: 14px; }
-.unit-toggle {
-  display: flex;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.unit-btn {
-  padding: 0.4rem 1rem;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.unit-btn.active { background: var(--primary); color: #fff; }
 
-.btn-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0.3rem 0.5rem;
-  border-radius: 6px;
-  transition: all 0.2s;
-  margin-right: auto;
+.fita-bar-left, .fita-bar-right {
+  width: 6px;
+  height: 26px;
 }
-.btn-back:hover { background: var(--card-hover); color: var(--text); }
-.btn-back svg { width: 18px; height: 18px; }
+
+/* Cores ao ativar (Vermelho como na imagem) */
+.fita-bar-top.active {
+  background: #e53e3e;
+  border-radius: 2px 2px 0 0;
+}
+.fita-bar-bottom.active {
+  background: #e53e3e;
+  border-radius: 0 0 2px 2px;
+}
+.fita-bar-left.active {
+  background: #e53e3e;
+  border-radius: 2px 0 0 2px;
+}
+.fita-bar-right.active {
+  background: #e53e3e;
+  border-radius: 0 2px 2px 0;
+}
+
+/* Efeito hover para cliques no celular */
+.fita-bar-top:hover, .fita-bar-bottom:hover, .fita-bar-left:hover, .fita-bar-right:hover {
+  background: rgba(229, 62, 62, 0.3);
+}
 
 /* Fullscreen Modal Override */
 .modal.fullscreen {
@@ -936,7 +933,6 @@ body:has(.login-wrapper) #app {
 .modal.fullscreen .cut-table td:first-child { padding-left: 1rem; }
 .modal.fullscreen .cut-table th:last-child,
 .modal.fullscreen .cut-table td:last-child { padding-right: 1rem; }
-
 @media (min-width: 768px) {
   .modal.fullscreen {
     max-width: 900px;
@@ -956,8 +952,6 @@ body:has(.login-wrapper) #app {
   .search-box .input { font-size: 0.88rem; }
   .cut-table th { font-size: 0.75rem; padding: 0.75rem 0.5rem; letter-spacing: 0.5px; }
   .cut-table input { font-size: 0.9rem; padding: 0.75rem 0.5rem; }
-  .fita-btn { width: 34px; height: 30px; font-size: 10px; }
-  .fita-group { gap: 6px; }
 }
 @media (min-width: 1000px) {
   .budget-grid { grid-template-columns: 1.8fr 1fr; gap: 1.5rem; }
