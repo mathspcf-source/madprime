@@ -665,7 +665,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — VERSÃO CORRIGIDA (PDF EM BRANCO RESOLVIDO)
+// GERADOR DE PDF — CORRIGIDO
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -697,6 +697,17 @@ function buildFitaPDF(i) {
   return box('A1', 'left') + box('A2', 'right') + box('L1', 'bottom') + box('L2', 'top');
 }
 
+// [CORRIGIDO] CSS de quebra de página injetado em ambos os HTMLs
+const PDF_PAGE_BREAK_CSS = `
+  <style>
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    img { page-break-inside: avoid; }
+  </style>
+`;
+
 function buildCutPlanHTML(c) {
   const s = getCompanyInfo();
   const logoSVG = s.logo ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
@@ -711,7 +722,8 @@ function buildCutPlanHTML(c) {
   const unitLabel = (c.unit || 'cm').toUpperCase();
 
   return `
-    <div style="width:800px; min-height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
+    ${PDF_PAGE_BREAK_CSS}
+    <div style="width:800px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
         <div>${logoSVG}</div>
         <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
@@ -757,7 +769,7 @@ function buildCutPlanHTML(c) {
             </tr>`).join('')}
         </tbody>
       </table>
-      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
+      <div style="margin-top:20px; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
         <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
@@ -777,7 +789,8 @@ function buildBudgetHTML(b) {
   const handle = s.company_name.replace(/\s+/g, '');
 
   return `
-    <div style="width:800px; min-height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
+    ${PDF_PAGE_BREAK_CSS}
+    <div style="width:800px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
         <div>${logoSVG}</div>
         <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
@@ -816,7 +829,7 @@ function buildBudgetHTML(b) {
         <div style="background:#000000; color:#ffffff; padding:12px 24px; font-size:16px; font-weight:600; border-radius:4px;">${formatCurrency(b.total)}</div>
       </div>
       ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:40px; padding-top:20px; border-top:1px solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
-      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
+      <div style="margin-top:20px; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
         <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
@@ -842,6 +855,7 @@ function generatePDFFallback(htmlContent, resolve, reject) {
       y: 0,
       width: 210,
       windowWidth: 800,
+      autoPaging: 'text',
       html2canvas: {
         scale: 0.7,
         useCORS: true,
@@ -861,6 +875,9 @@ function generatePDFFallback(htmlContent, resolve, reject) {
   }
 }
 
+// ============================================================
+// generatePDFBlob — CORRIGIDO
+// ============================================================
 function generatePDFBlob(type, id) {
   return new Promise(async (resolve, reject) => {
     let htmlContent = '';
@@ -884,7 +901,7 @@ function generatePDFBlob(type, id) {
       await document.fonts.ready;
     } catch (_) { /* ignora */ }
 
-    // 2) Wrapper visível, mas fora da viewport (NÃO usa opacity:0 nem z-index negativo)
+    // 2) Wrapper visível fora da viewport
     const wrapper = document.createElement('div');
     wrapper.style.position = 'fixed';
     wrapper.style.top = '0';
@@ -899,10 +916,11 @@ function generatePDFBlob(type, id) {
 
     const container = document.createElement('div');
     container.style.width = '800px';
-    container.style.minHeight = '1120px';
     container.style.background = '#ffffff';
     container.style.color = '#000000';
     container.innerHTML = htmlContent;
+    // [CORRIGIDO] Não força altura fixa — deixa o conteúdo definir
+    container.style.minHeight = '0';
 
     wrapper.appendChild(container);
     document.body.appendChild(wrapper);
@@ -920,90 +938,51 @@ function generatePDFBlob(type, id) {
 
     // 4) Aguarda 2 frames de renderização
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    // 5) Força reflow e mede altura real
     void container.offsetHeight;
-    const realHeight = Math.max(container.scrollHeight, container.offsetHeight, 1120);
 
     try {
-      // 6) Captura
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 800,
-        height: realHeight,
-        windowWidth: 800,
-        windowHeight: realHeight,
-        scrollX: 0,
-        scrollY: 0,
-        logging: false,
-        onclone: (clonedDoc, clonedEl) => {
-          clonedEl.style.position = 'static';
-          clonedEl.style.transform = 'none';
-          clonedEl.style.opacity = '1';
-          clonedEl.style.visibility = 'visible';
-          clonedEl.style.display = 'block';
-          clonedEl.style.background = '#ffffff';
-        }
-      });
-
-      // 7) Sanity check — se canvas em branco, usa fallback
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        throw new Error('Canvas vazio — html2canvas não renderizou.');
-      }
-
-      const ctx = canvas.getContext('2d');
-      const sampleH = Math.min(200, canvas.height);
-      const sample = ctx.getImageData(0, 0, canvas.width, sampleH).data;
-      let nonWhite = 0;
-      for (let i = 0; i < sample.length; i += 4) {
-        if (sample[i] < 250 || sample[i + 1] < 250 || sample[i + 2] < 250) nonWhite++;
-      }
-      if (nonWhite < 10) {
-        console.warn('[PDF] Canvas vazio detectado. Usando fallback nativo.');
-        wrapper.remove();
-        return generatePDFFallback(htmlContent, resolve, reject);
-      }
-
+      // [CORRIGIDO] Usa jsPDF.html() com autoPaging:'text' em vez de
+      // fatiar o canvas em pixels fixos (o que cortava linhas ao meio).
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
 
-      const pageW = 210;
-      const pageH = 297;
-      const imgW = pageW;
-
-      const pxPerMm = canvas.width / pageW;
-      const pagePxH = Math.floor(pageH * pxPerMm);
-
-      if (canvas.height <= pagePxH) {
-        const imgH = (canvas.height * imgW) / canvas.width;
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgH);
-      } else {
-        let yPx = 0;
-        let pageIndex = 0;
-        while (yPx < canvas.height) {
-          const sliceH = Math.min(pagePxH, canvas.height - yPx);
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sliceH;
-          const sctx = sliceCanvas.getContext('2d');
-          sctx.fillStyle = '#ffffff';
-          sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          sctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-
-          const sliceImgH = (sliceH * imgW) / canvas.width;
-          if (pageIndex > 0) pdf.addPage();
-          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
-
-          yPx += sliceH;
-          pageIndex++;
-        }
-      }
-
-      wrapper.remove();
-      resolve(pdf.output('blob'));
+      await new Promise((res, rej) => {
+        pdf.html(container, {
+          x: 0,
+          y: 0,
+          margin: [10, 10, 12, 10],
+          autoPaging: 'text',
+          width: 190,
+          windowWidth: 800,
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            scrollX: 0,
+            scrollY: 0
+          },
+          callback: (doc) => {
+            try {
+              const blob = doc.output('blob');
+              if (!blob || blob.size < 1000) {
+                throw new Error('PDF gerado vazio.');
+              }
+              res(blob);
+            } catch (e) {
+              rej(e);
+            }
+          }
+        }).catch(rej);
+      }).then((blob) => {
+        wrapper.remove();
+        resolve(blob);
+      }).catch((err) => {
+        wrapper.remove();
+        console.error('[PDF] Erro no html():', err);
+        generatePDFFallback(htmlContent, resolve, reject);
+      });
     } catch (err) {
       wrapper.remove();
       console.error('[PDF] Erro:', err);
