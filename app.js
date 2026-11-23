@@ -665,7 +665,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — CORRIGIDO
+// PDF — A4 NATIVO (mm), 1 PÁGINA (ou 2 se estourar 297mm)
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -684,33 +684,24 @@ function getCompanyInfo() {
 
 function buildFitaPDF(i) {
   const bar = {
-    left:   'top:-3px; bottom:-3px; left:-6px; width:5px;',
-    right:  'top:-3px; bottom:-3px; right:-6px; width:5px;',
-    bottom: 'left:-3px; right:-3px; bottom:-6px; height:5px;',
-    top:    'left:-3px; right:-3px; top:-6px; height:5px;'
+    left:   'top:-1mm; bottom:-1mm; left:-2mm; width:1.5mm;',
+    right:  'top:-1mm; bottom:-1mm; right:-2mm; width:1.5mm;',
+    bottom: 'left:-1mm; right:-1mm; bottom:-2mm; height:1.5mm;',
+    top:    'left:-1mm; right:-1mm; top:-2mm; height:1.5mm;'
   };
   const box = (label, edge) => `
-    <div style="display:inline-block; position:relative; width:26px; height:26px; box-sizing:border-box; border:2px dashed #555; margin:0 6px; vertical-align:middle; text-align:center; line-height:22px; font-size:10px; font-weight:800; color:#000; font-family:Inter, Arial, sans-serif;">
+    <div style="display:inline-block; position:relative; width:7mm; height:7mm; box-sizing:border-box; border:0.5mm dashed #555; margin:0 1.5mm; vertical-align:middle; text-align:center; line-height:6mm; font-size:2.6mm; font-weight:800; color:#000; font-family:Inter, Arial, sans-serif;">
       ${label}
       ${i[edge] ? `<div style="position:absolute; ${bar[edge]} background:#e53935;"></div>` : ''}
     </div>`;
   return box('A1', 'left') + box('A2', 'right') + box('L1', 'bottom') + box('L2', 'top');
 }
 
-// [CORRIGIDO] CSS de quebra de página injetado em ambos os HTMLs
-const PDF_PAGE_BREAK_CSS = `
-  <style>
-    table { page-break-inside: auto; }
-    tr { page-break-inside: avoid; page-break-after: auto; }
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    img { page-break-inside: avoid; }
-  </style>
-`;
-
 function buildCutPlanHTML(c) {
   const s = getCompanyInfo();
-  const logoSVG = s.logo ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+  const logoSVG = s.logo
+    ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:14mm; max-width:45mm; object-fit:contain;">`
+    : `<div style="background:#000; color:#fff; padding:2mm 4mm; font-size:3mm; font-weight:700; letter-spacing:1mm; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
   const dataObj = new Date(c.created_at);
@@ -722,54 +713,51 @@ function buildCutPlanHTML(c) {
   const unitLabel = (c.unit || 'cm').toUpperCase();
 
   return `
-    ${PDF_PAGE_BREAK_CSS}
-    <div style="width:800px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
+    <div style="width:210mm; min-height:297mm; padding:15mm; box-sizing:border-box; background:#fff; color:#000; font-family:'Inter', Arial, sans-serif; font-size:3.2mm; line-height:1.4; display:flex; flex-direction:column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8mm;">
         <div>${logoSVG}</div>
-        <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
+        <div style="font-size:2.6mm; font-weight:700; letter-spacing:0.5mm; text-transform:uppercase;">@${escapeHtml(handle)}</div>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:50px;">
-        <h1 style="font-size:48px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Plano de Corte</h1>
-        <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6mm;">
+        <h1 style="font-size:9mm; font-weight:800; margin:0; letter-spacing:-0.5mm; line-height:1;">Plano de Corte</h1>
+        <div style="font-size:4mm; font-weight:600;">${dataFormatada}</div>
       </div>
-      <div style="margin-bottom:20px; font-size:22px; font-weight:700;">${escapeHtml(c.name || 'Sem nome')}</div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
-        <div style="font-size:14px; color:#000000; line-height:1.6;">
+      <div style="font-size:5mm; font-weight:700; margin-bottom:4mm;">${escapeHtml(c.name || 'Sem nome')}</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6mm;">
+        <div style="font-size:2.8mm; line-height:1.5;">
           ${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
         </div>
-        <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
+        <div style="font-size:6mm; font-weight:300;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
       </div>
-      <div style="margin-bottom:30px; font-size:14px; display:flex; justify-content:space-between; align-items:flex-start;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:5mm; font-size:3mm;">
         <div>
           <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
-          <div style="margin-top:0.3rem;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
+          <div style="margin-top:1mm;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
         </div>
-        <div style="font-weight:700; border:1px solid #000; padding:2px 8px; border-radius:4px;">Medidas em ${unitLabel}</div>
+        <div style="font-weight:700; border:0.3mm solid #000; padding:0.5mm 2mm; border-radius:1mm;">Medidas em ${unitLabel}</div>
       </div>
-      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
+      <table style="width:100%; border-collapse:collapse; font-size:2.9mm; page-break-inside:auto;">
         <thead>
-          <tr style="background:#000000; color:#ffffff;">
-            <th style="text-align:center; padding:10px; width:50px; border-radius:4px 0 0 4px;">Peça</th>
-            <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
-            <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:190px; border-radius:0 4px 4px 0;">Fita</th>
+          <tr style="background:#000; color:#fff;">
+            <th style="text-align:center; padding:1.8mm 1mm; width:10mm;">Peça</th>
+            <th style="text-align:center; padding:1.8mm 1mm; width:12mm;">Qtd</th>
+            <th style="text-align:center; padding:1.8mm 1mm; width:20mm;">Alt (${unitLabel})</th>
+            <th style="text-align:center; padding:1.8mm 1mm; width:20mm;">Larg (${unitLabel})</th>
+            <th style="text-align:center; padding:1.8mm 1mm;">Fita</th>
           </tr>
         </thead>
         <tbody>
           ${c.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
-              <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
-              <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
-              <td style="text-align:center; padding:12px 10px;">
-                ${buildFitaPDF(i)}
-              </td>
+            <tr style="background:${idx % 2 === 0 ? '#fff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6; page-break-inside:avoid;">
+              <td style="text-align:center; padding:1.6mm 1mm; font-weight:600;">${idx + 1}</td>
+              <td style="text-align:center; padding:1.6mm 1mm;">${i.qty || 1}</td>
+              <td style="text-align:center; padding:1.6mm 1mm; white-space:nowrap;">${i.height}</td>
+              <td style="text-align:center; padding:1.6mm 1mm; white-space:nowrap;">${i.width}</td>
+              <td style="text-align:center; padding:1.6mm 1mm;">${buildFitaPDF(i)}</td>
             </tr>`).join('')}
         </tbody>
       </table>
-      <div style="margin-top:20px; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
+      <div style="margin-top:auto; padding-top:4mm; border-top:0.2mm solid #ddd; font-size:2.4mm; text-align:center;">
         <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
@@ -777,7 +765,9 @@ function buildCutPlanHTML(c) {
 
 function buildBudgetHTML(b) {
   const s = getCompanyInfo();
-  const logoSVG = s.logo ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+  const logoSVG = s.logo
+    ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:14mm; max-width:45mm; object-fit:contain;">`
+    : `<div style="background:#000; color:#fff; padding:2mm 4mm; font-size:3mm; font-weight:700; letter-spacing:1mm; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
   const conditions = (b.conditions || s.default_conditions || '').trim();
@@ -789,47 +779,46 @@ function buildBudgetHTML(b) {
   const handle = s.company_name.replace(/\s+/g, '');
 
   return `
-    ${PDF_PAGE_BREAK_CSS}
-    <div style="width:800px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
+    <div style="width:210mm; min-height:297mm; padding:15mm; box-sizing:border-box; background:#fff; color:#000; font-family:'Inter', Arial, sans-serif; font-size:3.2mm; line-height:1.4; display:flex; flex-direction:column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8mm;">
         <div>${logoSVG}</div>
-        <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
+        <div style="font-size:2.6mm; font-weight:700; letter-spacing:0.5mm; text-transform:uppercase;">@${escapeHtml(handle)}</div>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:50px;">
-        <h1 style="font-size:48px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Orçamento</h1>
-        <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6mm;">
+        <h1 style="font-size:9mm; font-weight:800; margin:0; letter-spacing:-0.5mm; line-height:1;">Orçamento</h1>
+        <div style="font-size:4mm; font-weight:600;">${dataFormatada}</div>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
-        <div style="font-size:14px; color:#000000; line-height:1.6;">${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
-        <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6mm;">
+        <div style="font-size:2.8mm; line-height:1.5;">${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
+        <div style="font-size:6mm; font-weight:300;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
       </div>
-      <div style="margin-bottom:30px; font-size:14px;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>
-      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
+      <div style="margin-bottom:5mm; font-size:3mm;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>
+      <table style="width:100%; border-collapse:collapse; font-size:2.9mm; page-break-inside:auto;">
         <thead>
-          <tr style="background:#000000; color:#ffffff;">
-            <th style="text-align:center; padding:10px; width:40px; border-radius:4px 0 0 4px;">Nº</th>
-            <th style="text-align:left; padding:10px;">Material</th>
-            <th style="text-align:center; padding:10px; width:50px;">Qtd</th>
-            <th style="text-align:right; padding:10px; width:100px;">Preço</th>
-            <th style="text-align:right; padding:10px; width:100px; border-radius:0 4px 4px 0;">Total</th>
+          <tr style="background:#000; color:#fff;">
+            <th style="text-align:center; padding:1.8mm 1mm; width:10mm;">Nº</th>
+            <th style="text-align:left; padding:1.8mm 1mm;">Material</th>
+            <th style="text-align:center; padding:1.8mm 1mm; width:14mm;">Qtd</th>
+            <th style="text-align:right; padding:1.8mm 1mm; width:22mm;">Preço</th>
+            <th style="text-align:right; padding:1.8mm 1mm; width:24mm;">Total</th>
           </tr>
         </thead>
         <tbody>
           ${b.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
-              <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
-              <td style="padding:12px 10px; font-weight:500;">${escapeHtml(i.name)}</td>
-              <td style="text-align:center; padding:12px 10px;">${i.qty}</td>
-              <td style="text-align:right; padding:12px 10px;">${formatCurrency(i.price)}</td>
-              <td style="text-align:right; padding:12px 10px; font-weight:700;">${formatCurrency(i.price * i.qty)}</td>
+            <tr style="background:${idx % 2 === 0 ? '#fff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6; page-break-inside:avoid;">
+              <td style="text-align:center; padding:1.6mm 1mm; font-weight:600;">${idx + 1}</td>
+              <td style="padding:1.6mm 1mm; font-weight:500;">${escapeHtml(i.name)}</td>
+              <td style="text-align:center; padding:1.6mm 1mm;">${i.qty}</td>
+              <td style="text-align:right; padding:1.6mm 1mm;">${formatCurrency(i.price)}</td>
+              <td style="text-align:right; padding:1.6mm 1mm; font-weight:700;">${formatCurrency(i.price * i.qty)}</td>
             </tr>`).join('')}
         </tbody>
       </table>
-      <div style="display:flex; justify-content:flex-end; margin-bottom:60px;">
-        <div style="background:#000000; color:#ffffff; padding:12px 24px; font-size:16px; font-weight:600; border-radius:4px;">${formatCurrency(b.total)}</div>
+      <div style="display:flex; justify-content:flex-end; margin-top:5mm; margin-bottom:6mm;">
+        <div style="background:#000; color:#fff; padding:2mm 5mm; font-size:4.2mm; font-weight:600; border-radius:1mm;">${formatCurrency(b.total)}</div>
       </div>
-      ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:40px; padding-top:20px; border-top:1px solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
-      <div style="margin-top:20px; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
+      ${conditions ? `<div style="font-size:2.6mm; margin-bottom:5mm; padding-top:3mm; border-top:0.2mm solid #ddd;"><strong>Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
+      <div style="margin-top:auto; padding-top:4mm; border-top:0.2mm solid #ddd; font-size:2.4mm; text-align:center;">
         <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
@@ -839,44 +828,26 @@ function generatePDFFallback(htmlContent, resolve, reject) {
   try {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
-
     const temp = document.createElement('div');
     temp.style.position = 'fixed';
     temp.style.left = '0';
     temp.style.top = '0';
-    temp.style.width = '800px';
+    temp.style.width = '210mm';
     temp.style.background = '#ffffff';
     temp.style.zIndex = '9999';
     temp.innerHTML = htmlContent;
     document.body.appendChild(temp);
-
     pdf.html(temp, {
-      x: 0,
-      y: 0,
-      width: 210,
-      windowWidth: 800,
+      x: 0, y: 0, width: 210, windowWidth: 794,
       autoPaging: 'text',
-      html2canvas: {
-        scale: 0.7,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false
-      },
-      callback: (doc) => {
-        temp.remove();
-        resolve(doc.output('blob'));
-      }
-    }).catch((e) => {
-      temp.remove();
-      reject(e);
-    });
-  } catch (e) {
-    reject(e);
-  }
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+      callback: (doc) => { temp.remove(); resolve(doc.output('blob')); }
+    }).catch((e) => { temp.remove(); reject(e); });
+  } catch (e) { reject(e); }
 }
 
 // ============================================================
-// generatePDFBlob — CORRIGIDO
+// generatePDFBlob — A4 nativo, sem fatiamento cego
 // ============================================================
 function generatePDFBlob(type, id) {
   return new Promise(async (resolve, reject) => {
@@ -891,7 +862,6 @@ function generatePDFBlob(type, id) {
       htmlContent = buildCutPlanHTML(c);
     }
 
-    // 1) Garante que a fonte Inter esteja carregada
     try {
       await document.fonts.load('400 14px Inter');
       await document.fonts.load('500 14px Inter');
@@ -899,15 +869,15 @@ function generatePDFBlob(type, id) {
       await document.fonts.load('700 14px Inter');
       await document.fonts.load('800 14px Inter');
       await document.fonts.ready;
-    } catch (_) { /* ignora */ }
+    } catch (_) {}
 
-    // 2) Wrapper visível fora da viewport
+    // Container fora da viewport, LARGURA A4 (210mm = 794px @96dpi)
     const wrapper = document.createElement('div');
     wrapper.style.position = 'fixed';
     wrapper.style.top = '0';
     wrapper.style.left = '0';
     wrapper.style.transform = 'translateX(-200vw)';
-    wrapper.style.width = '800px';
+    wrapper.style.width = '210mm';
     wrapper.style.height = 'auto';
     wrapper.style.zIndex = '1';
     wrapper.style.background = '#ffffff';
@@ -915,17 +885,14 @@ function generatePDFBlob(type, id) {
     wrapper.style.overflow = 'visible';
 
     const container = document.createElement('div');
-    container.style.width = '800px';
+    container.style.width = '210mm';
     container.style.background = '#ffffff';
     container.style.color = '#000000';
     container.innerHTML = htmlContent;
-    // [CORRIGIDO] Não força altura fixa — deixa o conteúdo definir
-    container.style.minHeight = '0';
 
     wrapper.appendChild(container);
     document.body.appendChild(wrapper);
 
-    // 3) Aguarda imagens (logo) carregarem
     const imgs = Array.from(container.querySelectorAll('img'));
     await Promise.all(imgs.map(img => {
       if (img.complete && img.naturalWidth > 0) return Promise.resolve();
@@ -936,53 +903,99 @@ function generatePDFBlob(type, id) {
       });
     }));
 
-    // 4) Aguarda 2 frames de renderização
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     void container.offsetHeight;
 
     try {
-      // [CORRIGIDO] Usa jsPDF.html() com autoPaging:'text' em vez de
-      // fatiar o canvas em pixels fixos (o que cortava linhas ao meio).
+      // Renderiza o container A4 (210mm de largura) num canvas
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: container.offsetWidth,
+        windowWidth: container.offsetWidth,
+        scrollX: 0,
+        scrollY: 0,
+        logging: false
+      });
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error('Canvas vazio.');
+      }
+
+      // Sanity check (branco total?)
+      const ctx = canvas.getContext('2d');
+      const sampleH = Math.min(200, canvas.height);
+      const sample = ctx.getImageData(0, 0, canvas.width, sampleH).data;
+      let nonWhite = 0;
+      for (let i = 0; i < sample.length; i += 4) {
+        if (sample[i] < 250 || sample[i+1] < 250 || sample[i+2] < 250) nonWhite++;
+      }
+      if (nonWhite < 10) throw new Error('Canvas em branco.');
+
+      // Mapeia canvas -> mm. O canvas tem a largura de 210mm exatos.
+      // A altura em mm é: canvas.height * (210 / canvas.width).
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
 
-      await new Promise((res, rej) => {
-        pdf.html(container, {
-          x: 0,
-          y: 0,
-          margin: [10, 10, 12, 10],
-          autoPaging: 'text',
-          width: 190,
-          windowWidth: 800,
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-            scrollX: 0,
-            scrollY: 0
-          },
-          callback: (doc) => {
-            try {
-              const blob = doc.output('blob');
-              if (!blob || blob.size < 1000) {
-                throw new Error('PDF gerado vazio.');
-              }
-              res(blob);
-            } catch (e) {
-              rej(e);
+      const contentH_mm = (canvas.height * 210) / canvas.width;
+
+      if (contentH_mm <= 297.5) {
+        // Cabe em 1 página A4 — cola direto, sem cortar
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, contentH_mm);
+      } else {
+        // Estourou 297mm — pagina em fatias, cortando em "linha branca"
+        const usableH_mm = 297;
+        const pxPerMm = canvas.width / 210;
+        const pagePxH = Math.floor(usableH_mm * pxPerMm);
+
+        const findSafeCut = (startY, limitY) => {
+          if (limitY >= canvas.height) return canvas.height;
+          const c2 = canvas.getContext('2d');
+          const scanFrom = Math.max(startY + 50, limitY - 400);
+          const xStart = 20;
+          const xEnd = canvas.width - 20;
+          const xStep = Math.max(1, Math.floor((xEnd - xStart) / 40));
+          for (let y = limitY; y >= scanFrom; y--) {
+            const row = c2.getImageData(xStart, y, xEnd - xStart, 1).data;
+            let allWhite = true;
+            for (let i = 0; i < row.length; i += 4 * xStep) {
+              if (row[i] < 245 || row[i+1] < 245 || row[i+2] < 245) { allWhite = false; break; }
             }
+            if (allWhite) return y;
           }
-        }).catch(rej);
-      }).then((blob) => {
-        wrapper.remove();
-        resolve(blob);
-      }).catch((err) => {
-        wrapper.remove();
-        console.error('[PDF] Erro no html():', err);
-        generatePDFFallback(htmlContent, resolve, reject);
-      });
+          return limitY;
+        };
+
+        let yPx = 0;
+        let pageIndex = 0;
+        while (yPx < canvas.height) {
+          const limitY = Math.min(yPx + pagePxH, canvas.height);
+          const cutY = (limitY >= canvas.height) ? canvas.height : findSafeCut(yPx, limitY);
+          const sliceH = cutY - yPx;
+          if (sliceH <= 0) break;
+
+          const slice = document.createElement('canvas');
+          slice.width = canvas.width;
+          slice.height = sliceH;
+          const sctx = slice.getContext('2d');
+          sctx.fillStyle = '#ffffff';
+          sctx.fillRect(0, 0, slice.width, slice.height);
+          sctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+          const sliceH_mm = (sliceH * 210) / canvas.width;
+          if (pageIndex > 0) pdf.addPage();
+          pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, sliceH_mm);
+
+          yPx = cutY;
+          pageIndex++;
+          if (pageIndex > 50) break;
+        }
+      }
+
+      wrapper.remove();
+      resolve(pdf.output('blob'));
     } catch (err) {
       wrapper.remove();
       console.error('[PDF] Erro:', err);
