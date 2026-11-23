@@ -366,7 +366,6 @@ function openEditCutPlanModal(planId) {
 function renderCutPlanModal() {
   const isEdit = !!cutState.editId;
   const materials = window.db.materials.filter(m => m.category === 'MDFs' && m.active);
-  // Se o material padrão não existe no cadastro (ex.: valor antigo), usa o primeiro MDF cadastrado
   if (materials.length && !materials.some(m => m.name === cutState.materialPadrao)) {
     cutState.materialPadrao = materials[0].name;
   }
@@ -432,36 +431,30 @@ function renderCutRow(item, idx) {
       <td><input type="number" class="input-dim" data-cut-field="width" data-idx="${idx}" value="${item.width}" placeholder="0"></td>
       <td style="padding: 0.5rem;">
         <div class="fita-container">
-          
-          <!-- Quatro quadradinhos: A1/A2 (altura) e L1/L2 (largura) -->
           <div class="fita-box">
             <div class="fita-piece">
               <span class="fita-title">A1</span>
               <button type="button" class="edge-left ${item.left ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="left" title="Fita na Altura 1 (Esquerda)"></button>
             </div>
           </div>
-
           <div class="fita-box">
             <div class="fita-piece">
               <span class="fita-title">A2</span>
               <button type="button" class="edge-right ${item.right ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="right" title="Fita na Altura 2 (Direita)"></button>
             </div>
           </div>
-
           <div class="fita-box">
             <div class="fita-piece">
               <span class="fita-title">L1</span>
               <button type="button" class="edge-bottom ${item.bottom ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="bottom" title="Fita na Largura 1 (Base)"></button>
             </div>
           </div>
-
           <div class="fita-box">
             <div class="fita-piece">
               <span class="fita-title">L2</span>
               <button type="button" class="edge-top ${item.top ? 'active' : ''}" data-action="toggle-edge" data-idx="${idx}" data-edge="top" title="Fita na Largura 2 (Topo)"></button>
             </div>
           </div>
-
         </div>
       </td>
     </tr>
@@ -698,7 +691,7 @@ function buildFitaPDF(i) {
     top:    'left:-3px; right:-3px; top:-6px; height:5px;'
   };
   const box = (label, edge) => `
-    <div style="display:inline-block; position:relative; width:26px; height:26px; box-sizing:border-box; border:2px dashed #555; margin:0 6px; vertical-align:middle; text-align:center; line-height:22px; font-size:10px; font-weight:800; color:#000;">
+    <div style="display:inline-block; position:relative; width:26px; height:26px; box-sizing:border-box; border:2px dashed #555; margin:0 6px; vertical-align:middle; text-align:center; line-height:22px; font-size:10px; font-weight:800; color:#000; font-family:Inter, Arial, sans-serif;">
       ${label}
       ${i[edge] ? `<div style="position:absolute; ${bar[edge]} background:#e53935;"></div>` : ''}
     </div>`;
@@ -719,7 +712,7 @@ function buildCutPlanHTML(c) {
   const unitLabel = (c.unit || 'cm').toUpperCase();
 
   return `
-    <div style="width:800px; height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
+    <div style="width:800px; min-height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
         <div>${logoSVG}</div>
         <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
@@ -785,7 +778,7 @@ function buildBudgetHTML(b) {
   const handle = s.company_name.replace(/\s+/g, '');
 
   return `
-    <div style="width:800px; height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
+    <div style="width:800px; min-height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
         <div>${logoSVG}</div>
         <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
@@ -831,45 +824,122 @@ function buildBudgetHTML(b) {
 }
 
 function generatePDFBlob(type, id) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     let htmlContent = '';
     if (type === 'budget') {
       const b = window.db.budgets.find(x => x.id === id);
-      if (!b) return reject('Orçamento não encontrado.');
+      if (!b) return reject(new Error('Orçamento não encontrado.'));
       htmlContent = buildBudgetHTML(b);
     } else if (type === 'cut') {
       const c = window.db.cuttingPlans.find(x => x.id === id);
-      if (!c) return reject('Plano de Corte não encontrado.');
+      if (!c) return reject(new Error('Plano de Corte não encontrado.'));
       htmlContent = buildCutPlanHTML(c);
     }
 
+    // 1) Garante que a fonte Inter esteja carregada
+    try {
+      await document.fonts.load('400 14px Inter');
+      await document.fonts.load('500 14px Inter');
+      await document.fonts.load('600 14px Inter');
+      await document.fonts.load('700 14px Inter');
+      await document.fonts.load('800 14px Inter');
+      await document.fonts.ready;
+    } catch (_) { /* ignora */ }
+
+    // 2) Container fora da viewport, mas SEM -9999px
     const container = document.createElement('div');
     container.style.position = 'fixed';
-    container.style.left = '-9999px';
+    container.style.left = '0';
     container.style.top = '0';
+    container.style.zIndex = '-9999';
+    container.style.opacity = '0';
+    container.style.pointerEvents = 'none';
     container.style.width = '800px';
-    container.style.height = '1120px';
+    container.style.height = 'auto';
     container.style.background = '#ffffff';
     container.innerHTML = htmlContent;
     document.body.appendChild(container);
 
-    html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      width: 800,
-      height: 1120
-    }).then((canvas) => {
+    // 3) Aguarda imagens (logo) carregarem
+    const imgs = Array.from(container.querySelectorAll('img'));
+    await Promise.all(imgs.map(img => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      return new Promise(res => {
+        img.onload = res;
+        img.onerror = res;
+        setTimeout(res, 3000);
+      });
+    }));
+
+    // 4) Força reflow
+    void container.offsetHeight;
+
+    // 5) Mede altura real
+    const realHeight = Math.max(container.scrollHeight, container.offsetHeight, 1120);
+
+    try {
+      // 6) Captura em canvas único
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 800,
+        height: realHeight,
+        windowWidth: 800,
+        windowHeight: realHeight,
+        scrollX: 0,
+        scrollY: 0,
+        logging: false
+      });
+
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+
+      const pageW = 210;
+      const pageH = 297;
+      const imgW = pageW;
+
+      const pxPerMm = canvas.width / pageW;
+      const pagePxH = Math.floor(pageH * pxPerMm);
+
+      if (canvas.height <= pagePxH) {
+        const imgH = (canvas.height * imgW) / canvas.width;
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgH);
+      } else {
+        let yPx = 0;
+        let pageIndex = 0;
+        while (yPx < canvas.height) {
+          const sliceH = Math.min(pagePxH, canvas.height - yPx);
+
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceH;
+          const ctx = sliceCanvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0, yPx, canvas.width, sliceH,
+            0, 0,   canvas.width, sliceH
+          );
+
+          const sliceImgH = (sliceH * imgW) / canvas.width;
+
+          if (pageIndex > 0) pdf.addPage();
+          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
+
+          yPx += sliceH;
+          pageIndex++;
+        }
+      }
+
       container.remove();
       resolve(pdf.output('blob'));
-    }).catch((err) => {
+    } catch (err) {
       container.remove();
       reject(err);
-    });
+    }
   });
 }
 
@@ -881,17 +951,26 @@ async function downloadPDF(type, id) {
 
   try {
     const blob = await generatePDFBlob(type, id);
+    const doc = type === 'budget'
+      ? window.db.budgets.find(x => x.id === id)
+      : window.db.cuttingPlans.find(x => x.id === id);
+    const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
+
+    const safeName = String(nameToUse).replace(/[\\/:*?"<>|]/g, '_').trim();
+    const fileName = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${safeName}.pdf`;
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; 
-    const doc = type === 'budget' ? window.db.budgets.find(x => x.id === id) : window.db.cuttingPlans.find(x => x.id === id);
-    const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
-    a.download = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${nameToUse}.pdf`; 
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+
     showToast('PDF gerado com sucesso!', 'success');
   } catch (err) {
-    console.error(err);
+    console.error('Erro em downloadPDF:', err);
     showToast('Erro ao gerar PDF.', 'error');
   } finally {
     loading.remove();
@@ -906,34 +985,55 @@ async function sharePDFWhatsApp(type, id) {
 
   try {
     const s = getCompanyInfo();
-    const doc = type === 'budget' ? window.db.budgets.find(x => x.id === id) : window.db.cuttingPlans.find(x => x.id === id);
+    const doc = type === 'budget'
+      ? window.db.budgets.find(x => x.id === id)
+      : window.db.cuttingPlans.find(x => x.id === id);
+    if (!doc) { showToast('Documento não encontrado.', 'error'); return; }
+
     const blob = await generatePDFBlob(type, id);
     const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
-    const fileName = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${nameToUse}.pdf`;
+    const safeName = String(nameToUse).replace(/[\\/:*?"<>|]/g, '_').trim();
+    const fileName = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${safeName}.pdf`;
     const file = new File([blob], fileName, { type: 'application/pdf' });
-    
-    const phone = (s.whatsapp || '').replace(/\D/g, '');
+
+    let phone = (s.whatsapp || '').replace(/\D/g, '');
+    if (phone && !phone.startsWith('55')) phone = '55' + phone;
+    if (phone.length > 13) phone = phone.slice(0, 13);
+
     const title = type === 'budget' ? 'orçamento' : 'plano de corte';
     const mensagem = `Olá! Segue em anexo o ${title} *${nameToUse}* da *${s.company_name}*.`;
     const msgEncoded = encodeURIComponent(mensagem);
-    const waURL = phone ? `https://wa.me/55${phone}?text=${msgEncoded}` : `https://wa.me/?text=${msgEncoded}`;
+    const waURL = phone
+      ? `https://wa.me/${phone}?text=${msgEncoded}`
+      : `https://wa.me/?text=${msgEncoded}`;
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: `${type === 'budget' ? 'Orçamento' : 'Plano de Corte'} ${nameToUse}`, text: mensagem });
-      showToast('PDF compartilhado!', 'success');
-    } else {
-      showToast('PDF baixado! Abrindo WhatsApp...', 'success');
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = fileName; a.click();
-      URL.revokeObjectURL(url);
-      setTimeout(() => window.open(waURL, '_blank'), 600);
+      try {
+        await navigator.share({
+          files: [file],
+          title: `${type === 'budget' ? 'Orçamento' : 'Plano de Corte'} ${nameToUse}`,
+          text: mensagem
+        });
+        showToast('PDF compartilhado!', 'success');
+        return;
+      } catch (shareErr) {
+        if (shareErr && shareErr.name === 'AbortError') return;
+      }
     }
+
+    showToast('PDF baixado! Abrindo WhatsApp...', 'success');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setTimeout(() => window.open(waURL, '_blank'), 800);
   } catch (err) {
-    if (err.name !== 'AbortError') {
-      console.error(err);
-      showToast('Erro ao gerar/compartilhar PDF.', 'error');
-    }
+    console.error('Erro em sharePDFWhatsApp:', err);
+    showToast('Erro ao gerar/compartilhar PDF.', 'error');
   } finally {
     loading.remove();
   }
@@ -948,7 +1048,6 @@ async function saveCutPlan() {
   if (validItems.length === 0) { showToast('Preencha pelo menos uma peça com altura e largura.', 'error'); return; }
   
   const user = window.db.users.find(u => u.id === window.currentUser.id);
-  // Próximo número = maior número existente + 1 (evita duplicar quando há planos excluídos ou ocultos)
   const maxSeq = window.db.cuttingPlans.reduce((max, p) => {
     const m = /(\d+)\s*$/.exec(p.number || '');
     return m ? Math.max(max, parseInt(m[1], 10)) : max;
@@ -960,7 +1059,6 @@ async function saveCutPlan() {
     items: validItems.map(i => ({ ...i })), unit: cutState.unit, material_padrao: cutState.materialPadrao, status: 'pending', created_at: new Date().toISOString()
   };
 
-  // Se o número já existir no banco (valor duplicado), tenta o próximo
   let error = null;
   for (let attempt = 0; attempt < 15; attempt++) {
     const number = 'PC-2026-' + String(seq).padStart(4, '0');
@@ -1158,7 +1256,6 @@ document.addEventListener('click', async (e) => {
   if (action === 'update-budget') { updateBudget(); return; }
   if (action === 'save-settings') { saveSettings(); return; }
 
-  // PDFs e WhatsApp
   if (action === 'pdf-cut-plan') { downloadPDF('cut', target.dataset.id); return; }
   if (action === 'share-cut-plan-whatsapp') { sharePDFWhatsApp('cut', target.dataset.id); return; }
   if (action === 'pdf-budget') { downloadPDF('budget', target.dataset.id); return; }
