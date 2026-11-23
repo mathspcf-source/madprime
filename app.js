@@ -665,7 +665,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF
+// GERADOR DE PDF — VERSÃO CORRIGIDA (PDF EM BRANCO RESOLVIDO)
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -682,7 +682,6 @@ function getCompanyInfo() {
   };
 }
 
-// Quadradinhos de fita para o PDF (A1, A2, L1, L2): borda tracejada + barra vermelha na lateral com fita
 function buildFitaPDF(i) {
   const bar = {
     left:   'top:-3px; bottom:-3px; left:-6px; width:5px;',
@@ -700,7 +699,7 @@ function buildFitaPDF(i) {
 
 function buildCutPlanHTML(c) {
   const s = getCompanyInfo();
-  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+  const logoSVG = s.logo ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
   const dataObj = new Date(c.created_at);
@@ -766,7 +765,7 @@ function buildCutPlanHTML(c) {
 
 function buildBudgetHTML(b) {
   const s = getCompanyInfo();
-  const logoSVG = s.logo ? `<img src="${s.logo}" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+  const logoSVG = s.logo ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
   const conditions = (b.conditions || s.default_conditions || '').trim();
@@ -823,6 +822,45 @@ function buildBudgetHTML(b) {
     </div>`;
 }
 
+function generatePDFFallback(htmlContent, resolve, reject) {
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const temp = document.createElement('div');
+    temp.style.position = 'fixed';
+    temp.style.left = '0';
+    temp.style.top = '0';
+    temp.style.width = '800px';
+    temp.style.background = '#ffffff';
+    temp.style.zIndex = '9999';
+    temp.innerHTML = htmlContent;
+    document.body.appendChild(temp);
+
+    pdf.html(temp, {
+      x: 0,
+      y: 0,
+      width: 210,
+      windowWidth: 800,
+      html2canvas: {
+        scale: 0.7,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      },
+      callback: (doc) => {
+        temp.remove();
+        resolve(doc.output('blob'));
+      }
+    }).catch((e) => {
+      temp.remove();
+      reject(e);
+    });
+  } catch (e) {
+    reject(e);
+  }
+}
+
 function generatePDFBlob(type, id) {
   return new Promise(async (resolve, reject) => {
     let htmlContent = '';
@@ -846,19 +884,28 @@ function generatePDFBlob(type, id) {
       await document.fonts.ready;
     } catch (_) { /* ignora */ }
 
-    // 2) Container fora da viewport, mas SEM -9999px
+    // 2) Wrapper visível, mas fora da viewport (NÃO usa opacity:0 nem z-index negativo)
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '0';
+    wrapper.style.left = '0';
+    wrapper.style.transform = 'translateX(-200vw)';
+    wrapper.style.width = '800px';
+    wrapper.style.height = 'auto';
+    wrapper.style.zIndex = '1';
+    wrapper.style.background = '#ffffff';
+    wrapper.style.pointerEvents = 'none';
+    wrapper.style.overflow = 'visible';
+
     const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '0';
-    container.style.top = '0';
-    container.style.zIndex = '-9999';
-    container.style.opacity = '0';
-    container.style.pointerEvents = 'none';
     container.style.width = '800px';
-    container.style.height = 'auto';
+    container.style.minHeight = '1120px';
     container.style.background = '#ffffff';
+    container.style.color = '#000000';
     container.innerHTML = htmlContent;
-    document.body.appendChild(container);
+
+    wrapper.appendChild(container);
+    document.body.appendChild(wrapper);
 
     // 3) Aguarda imagens (logo) carregarem
     const imgs = Array.from(container.querySelectorAll('img'));
@@ -871,14 +918,15 @@ function generatePDFBlob(type, id) {
       });
     }));
 
-    // 4) Força reflow
-    void container.offsetHeight;
+    // 4) Aguarda 2 frames de renderização
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-    // 5) Mede altura real
+    // 5) Força reflow e mede altura real
+    void container.offsetHeight;
     const realHeight = Math.max(container.scrollHeight, container.offsetHeight, 1120);
 
     try {
-      // 6) Captura em canvas único
+      // 6) Captura
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
@@ -890,8 +938,34 @@ function generatePDFBlob(type, id) {
         windowHeight: realHeight,
         scrollX: 0,
         scrollY: 0,
-        logging: false
+        logging: false,
+        onclone: (clonedDoc, clonedEl) => {
+          clonedEl.style.position = 'static';
+          clonedEl.style.transform = 'none';
+          clonedEl.style.opacity = '1';
+          clonedEl.style.visibility = 'visible';
+          clonedEl.style.display = 'block';
+          clonedEl.style.background = '#ffffff';
+        }
       });
+
+      // 7) Sanity check — se canvas em branco, usa fallback
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error('Canvas vazio — html2canvas não renderizou.');
+      }
+
+      const ctx = canvas.getContext('2d');
+      const sampleH = Math.min(200, canvas.height);
+      const sample = ctx.getImageData(0, 0, canvas.width, sampleH).data;
+      let nonWhite = 0;
+      for (let i = 0; i < sample.length; i += 4) {
+        if (sample[i] < 250 || sample[i + 1] < 250 || sample[i + 2] < 250) nonWhite++;
+      }
+      if (nonWhite < 10) {
+        console.warn('[PDF] Canvas vazio detectado. Usando fallback nativo.');
+        wrapper.remove();
+        return generatePDFFallback(htmlContent, resolve, reject);
+      }
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -911,21 +985,15 @@ function generatePDFBlob(type, id) {
         let pageIndex = 0;
         while (yPx < canvas.height) {
           const sliceH = Math.min(pagePxH, canvas.height - yPx);
-
           const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = canvas.width;
           sliceCanvas.height = sliceH;
-          const ctx = sliceCanvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0, yPx, canvas.width, sliceH,
-            0, 0,   canvas.width, sliceH
-          );
+          const sctx = sliceCanvas.getContext('2d');
+          sctx.fillStyle = '#ffffff';
+          sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          sctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
 
           const sliceImgH = (sliceH * imgW) / canvas.width;
-
           if (pageIndex > 0) pdf.addPage();
           pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
 
@@ -934,11 +1002,12 @@ function generatePDFBlob(type, id) {
         }
       }
 
-      container.remove();
+      wrapper.remove();
       resolve(pdf.output('blob'));
     } catch (err) {
-      container.remove();
-      reject(err);
+      wrapper.remove();
+      console.error('[PDF] Erro:', err);
+      generatePDFFallback(htmlContent, resolve, reject);
     }
   });
 }
