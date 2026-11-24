@@ -665,7 +665,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — VERSÃO CORRIGIDA (PDF EM BRANCO RESOLVIDO)
+// GERADOR DE PDF — VERSÃO FINAL (Vetorial para Cortes)
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -682,87 +682,6 @@ function getCompanyInfo() {
   };
 }
 
-function buildFitaPDF(i) {
-  const bar = {
-    left:   'top:-3px; bottom:-3px; left:-6px; width:5px;',
-    right:  'top:-3px; bottom:-3px; right:-6px; width:5px;',
-    bottom: 'left:-3px; right:-3px; bottom:-6px; height:5px;',
-    top:    'left:-3px; right:-3px; top:-6px; height:5px;'
-  };
-  const box = (label, edge) => `
-    <div style="display:inline-block; position:relative; width:26px; height:26px; box-sizing:border-box; border:2px dashed #555; margin:0 6px; vertical-align:middle; text-align:center; line-height:22px; font-size:10px; font-weight:800; color:#000; font-family:Inter, Arial, sans-serif;">
-      ${label}
-      ${i[edge] ? `<div style="position:absolute; ${bar[edge]} background:#e53935;"></div>` : ''}
-    </div>`;
-  return box('A1', 'left') + box('A2', 'right') + box('L1', 'bottom') + box('L2', 'top');
-}
-
-function buildCutPlanHTML(c) {
-  const s = getCompanyInfo();
-  const logoSVG = s.logo ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
-  const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
-  const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
-  const dataObj = new Date(c.created_at);
-  const dia = dataObj.getDate().toString().padStart(2, '0');
-  const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
-  const numCurto = c.number.split('-').pop();
-  const handle = s.company_name.replace(/\s+/g, '');
-  const unitLabel = (c.unit || 'cm').toUpperCase();
-
-  return `
-    <div style="width:800px; min-height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
-        <div>${logoSVG}</div>
-        <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:50px;">
-        <h1 style="font-size:48px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Plano de Corte</h1>
-        <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
-      </div>
-      <div style="margin-bottom:20px; font-size:22px; font-weight:700;">${escapeHtml(c.name || 'Sem nome')}</div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
-        <div style="font-size:14px; color:#000000; line-height:1.6;">
-          ${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
-        </div>
-        <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
-      </div>
-      <div style="margin-bottom:30px; font-size:14px; display:flex; justify-content:space-between; align-items:flex-start;">
-        <div>
-          <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
-          <div style="margin-top:0.3rem;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
-        </div>
-        <div style="font-weight:700; border:1px solid #000; padding:2px 8px; border-radius:4px;">Medidas em ${unitLabel}</div>
-      </div>
-      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
-        <thead>
-          <tr style="background:#000000; color:#ffffff;">
-            <th style="text-align:center; padding:10px; width:50px; border-radius:4px 0 0 4px;">Peça</th>
-            <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
-            <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:190px; border-radius:0 4px 4px 0;">Fita</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${c.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
-              <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
-              <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
-              <td style="text-align:center; padding:12px 10px;">
-                ${buildFitaPDF(i)}
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
-        <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
-      </div>
-    </div>`;
-}
-
 function buildBudgetHTML(b) {
   const s = getCompanyInfo();
   const logoSVG = s.logo ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
@@ -777,18 +696,18 @@ function buildBudgetHTML(b) {
   const handle = s.company_name.replace(/\s+/g, '');
 
   return `
-    <div style="width:800px; min-height:1120px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
+    <div style="width:800px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:40px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
         <div>${logoSVG}</div>
         <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:50px;">
-        <h1 style="font-size:48px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Orçamento</h1>
-        <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:30px;">
+        <h1 style="font-size:42px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Orçamento</h1>
+        <div style="font-size:18px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:30px;">
         <div style="font-size:14px; color:#000000; line-height:1.6;">${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
-        <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
+        <div style="font-size:24px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
       </div>
       <div style="margin-bottom:30px; font-size:14px;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>
       <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
@@ -803,7 +722,7 @@ function buildBudgetHTML(b) {
         </thead>
         <tbody>
           ${b.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
+            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6; page-break-inside: avoid;">
               <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
               <td style="padding:12px 10px; font-weight:500;">${escapeHtml(i.name)}</td>
               <td style="text-align:center; padding:12px 10px;">${i.qty}</td>
@@ -812,50 +731,160 @@ function buildBudgetHTML(b) {
             </tr>`).join('')}
         </tbody>
       </table>
-      <div style="display:flex; justify-content:flex-end; margin-bottom:60px;">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:40px;">
         <div style="background:#000000; color:#ffffff; padding:12px 24px; font-size:16px; font-weight:600; border-radius:4px;">${formatCurrency(b.total)}</div>
       </div>
-      ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:40px; padding-top:20px; border-top:1px solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
-      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
+      ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:30px; padding-top:20px; border-top:1px solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
+      <div style="margin-top: 20px; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
         <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
 }
 
-function generatePDFFallback(htmlContent, resolve, reject) {
+function generatePDFTable(c, pdf, resolve, reject) {
   try {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    const s = getCompanyInfo();
+    const marginLeft = 15;
+    const marginRight = 15;
+    const pageWidth = 210;
+    const usableWidth = pageWidth - marginLeft - marginRight; // 180mm
+    
+    // Limite inferior da página A4 (297mm - 15mm margem inferior)
+    const maxY = 297 - 15; 
+    let y = 20; 
 
-    const temp = document.createElement('div');
-    temp.style.position = 'fixed';
-    temp.style.left = '0';
-    temp.style.top = '0';
-    temp.style.width = '800px';
-    temp.style.background = '#ffffff';
-    temp.style.zIndex = '9999';
-    temp.innerHTML = htmlContent;
-    document.body.appendChild(temp);
+    // Cabeçalho do Documento
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(22);
+    pdf.text('Plano de Corte', marginLeft, y);
+    
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Data: ${formatDate(c.created_at).split(' ')[0]}`, pageWidth - marginRight, y, { align: 'right' });
+    
+    y += 10;
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`Projeto: ${c.name || 'Sem nome'}`, marginLeft, y);
+    
+    y += 6;
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Cliente: ${c.client_name}`, marginLeft, y);
+    pdf.text(`Material: ${c.material_padrao || '—'}`, marginLeft, y + 5);
+    pdf.text(`Medidas em: ${(c.unit || 'cm').toUpperCase()}`, pageWidth - marginRight, y, { align: 'right' });
 
-    pdf.html(temp, {
-      x: 0,
-      y: 0,
-      width: 210,
-      windowWidth: 800,
-      html2canvas: {
-        scale: 0.7,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false
-      },
-      callback: (doc) => {
-        temp.remove();
-        resolve(doc.output('blob'));
+    y += 15;
+
+    // Larguras exatas das colunas em mm (Total = 180mm)
+    const colWidths = [25, 20, 35, 35, 65]; 
+    const colX = [
+      marginLeft, 
+      marginLeft + colWidths[0], 
+      marginLeft + colWidths[0] + colWidths[1], 
+      marginLeft + colWidths[0] + colWidths[1] + colWidths[2],
+      marginLeft + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]
+    ];
+
+    // Função para desenhar o cabeçalho da tabela em qualquer página
+    const drawTableHeader = (startY) => {
+      pdf.setFillColor(0, 0, 0);
+      pdf.rect(marginLeft, startY, usableWidth, 8, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      
+      pdf.text('Peça', colX[0] + colWidths[0]/2, startY + 5.5, { align: 'center' });
+      pdf.text('Qtd', colX[1] + colWidths[1]/2, startY + 5.5, { align: 'center' });
+      pdf.text(`Alt (${c.unit || 'cm'})`, colX[2] + colWidths[2]/2, startY + 5.5, { align: 'center' });
+      pdf.text(`Larg (${c.unit || 'cm'})`, colX[3] + colWidths[3]/2, startY + 5.5, { align: 'center' });
+      pdf.text('Fita', colX[4] + colWidths[4]/2, startY + 5.5, { align: 'center' });
+      
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('helvetica', 'normal');
+    };
+
+    drawTableHeader(y);
+    y += 8;
+
+    // Loop das Peças
+    c.items.forEach((item, idx) => {
+      const rowHeight = 10;
+      
+      // Se a linha atual + a altura da próxima linha ultrapassar 282mm, quebra a página
+      if (y + rowHeight > maxY) {
+        pdf.addPage();
+        y = 20; 
+        drawTableHeader(y);
+        y += 8;
       }
-    }).catch((e) => {
-      temp.remove();
-      reject(e);
+
+      // Fundo zebrado
+      if (idx % 2 === 0) {
+        pdf.setFillColor(248, 249, 250);
+        pdf.rect(marginLeft, y, usableWidth, rowHeight, 'F');
+      }
+
+      // Textos das colunas (centralizados)
+      pdf.text(String(idx + 1), colX[0] + colWidths[0]/2, y + 6.5, { align: 'center' });
+      pdf.text(String(item.qty || 1), colX[1] + colWidths[1]/2, y + 6.5, { align: 'center' });
+      pdf.text(String(item.height), colX[2] + colWidths[2]/2, y + 6.5, { align: 'center' });
+      pdf.text(String(item.width), colX[3] + colWidths[3]/2, y + 6.5, { align: 'center' });
+
+      // Quadradinhos das Fitas centralizados na última coluna
+      const fitaCenterX = colX[4] + (colWidths[4] / 2);
+      const gap = 9; // Espaçamento entre os centros dos quadradinhos
+      // Coordenadas X dos centros: desloca para a esquerda para alinhar o conjunto
+      const cx = [
+        fitaCenterX - (gap * 1.5), 
+        fitaCenterX - (gap * 0.5), 
+        fitaCenterX + (gap * 0.5), 
+        fitaCenterX + (gap * 1.5)
+      ];
+      
+      const labels = ['A1', 'A2', 'L1', 'L2'];
+      const states = [item.left, item.right, item.bottom, item.top];
+
+      for (let i = 0; i < 4; i++) {
+        const boxX = cx[i] - 3; // centraliza o quadradinho de 6mm
+        const boxY = y + 3;     // 3mm de margem do topo da linha (altura total 10, sobra 4 embaixo)
+
+        pdf.setDrawColor(80, 80, 80);
+        pdf.setLineWidth(0.3);
+        pdf.setLineDashPattern([1, 1], 0);
+        pdf.rect(boxX, boxY, 6, 4);
+        
+        pdf.setFontSize(6);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(labels[i], boxX + 3, boxY + 2.8, { align: 'center' });
+        
+        if (states[i]) {
+          pdf.setDrawColor(229, 57, 53);
+          pdf.setLineWidth(0.8);
+          pdf.setLineDashPattern([], 0);
+          
+          // Fita na lateral correta
+          if (labels[i] === 'A1') pdf.line(boxX - 0.5, boxY, boxX - 0.5, boxY + 4);
+          if (labels[i] === 'A2') pdf.line(boxX + 6.5, boxY, boxX + 6.5, boxY + 4);
+          if (labels[i] === 'L1') pdf.line(boxX, boxY + 4.5, boxX + 6, boxY + 4.5);
+          if (labels[i] === 'L2') pdf.line(boxX, boxY - 0.5, boxX + 6, boxY - 0.5);
+        }
+      }
+      
+      // Reseta o estilo para desenhar a linha divisória
+      pdf.setLineDashPattern([], 0);
+      pdf.setDrawColor(220, 220, 220);
+      pdf.setLineWidth(0.2);
+      pdf.line(marginLeft, y + rowHeight, pageWidth - marginRight, y + rowHeight);
+      
+      y += rowHeight;
     });
+
+    // Rodapé na última página
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`${s.company_name} · CNPJ: ${s.cnpj} · ${s.address}`, pageWidth / 2, 290, { align: 'center' });
+
+    resolve(pdf.output('blob'));
   } catch (e) {
     reject(e);
   }
@@ -863,151 +892,66 @@ function generatePDFFallback(htmlContent, resolve, reject) {
 
 function generatePDFBlob(type, id) {
   return new Promise(async (resolve, reject) => {
-    let htmlContent = '';
+    try {
+      await document.fonts.load('400 14px Inter');
+      await document.fonts.load('700 14px Inter');
+      await document.fonts.ready;
+    } catch (_) {}
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
     if (type === 'budget') {
       const b = window.db.budgets.find(x => x.id === id);
       if (!b) return reject(new Error('Orçamento não encontrado.'));
-      htmlContent = buildBudgetHTML(b);
-    } else if (type === 'cut') {
-      const c = window.db.cuttingPlans.find(x => x.id === id);
-      if (!c) return reject(new Error('Plano de Corte não encontrado.'));
-      htmlContent = buildCutPlanHTML(c);
-    }
+      
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '0';
+      container.style.top = '0';
+      container.style.transform = 'translateX(-200vw)';
+      container.style.width = '800px';
+      container.style.background = '#ffffff';
+      container.innerHTML = buildBudgetHTML(b);
+      document.body.appendChild(container);
 
-    // 1) Garante que a fonte Inter esteja carregada
-    try {
-      await document.fonts.load('400 14px Inter');
-      await document.fonts.load('500 14px Inter');
-      await document.fonts.load('600 14px Inter');
-      await document.fonts.load('700 14px Inter');
-      await document.fonts.load('800 14px Inter');
-      await document.fonts.ready;
-    } catch (_) { /* ignora */ }
+      const imgs = Array.from(container.querySelectorAll('img'));
+      await Promise.all(imgs.map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(res => { img.onload = res; img.onerror = res; setTimeout(res, 3000); });
+      }));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-    // 2) Wrapper visível, mas fora da viewport (NÃO usa opacity:0 nem z-index negativo)
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'fixed';
-    wrapper.style.top = '0';
-    wrapper.style.left = '0';
-    wrapper.style.transform = 'translateX(-200vw)';
-    wrapper.style.width = '800px';
-    wrapper.style.height = 'auto';
-    wrapper.style.zIndex = '1';
-    wrapper.style.background = '#ffffff';
-    wrapper.style.pointerEvents = 'none';
-    wrapper.style.overflow = 'visible';
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgW = 210;
+      const imgH = (canvas.height * imgW) / canvas.width;
 
-    const container = document.createElement('div');
-    container.style.width = '800px';
-    container.style.minHeight = '1120px';
-    container.style.background = '#ffffff';
-    container.style.color = '#000000';
-    container.innerHTML = htmlContent;
-
-    wrapper.appendChild(container);
-    document.body.appendChild(wrapper);
-
-    // 3) Aguarda imagens (logo) carregarem
-    const imgs = Array.from(container.querySelectorAll('img'));
-    await Promise.all(imgs.map(img => {
-      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-      return new Promise(res => {
-        img.onload = res;
-        img.onerror = res;
-        setTimeout(res, 3000);
-      });
-    }));
-
-    // 4) Aguarda 2 frames de renderização
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    // 5) Força reflow e mede altura real
-    void container.offsetHeight;
-    const realHeight = Math.max(container.scrollHeight, container.offsetHeight, 1120);
-
-    try {
-      // 6) Captura
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 800,
-        height: realHeight,
-        windowWidth: 800,
-        windowHeight: realHeight,
-        scrollX: 0,
-        scrollY: 0,
-        logging: false,
-        onclone: (clonedDoc, clonedEl) => {
-          clonedEl.style.position = 'static';
-          clonedEl.style.transform = 'none';
-          clonedEl.style.opacity = '1';
-          clonedEl.style.visibility = 'visible';
-          clonedEl.style.display = 'block';
-          clonedEl.style.background = '#ffffff';
-        }
-      });
-
-      // 7) Sanity check — se canvas em branco, usa fallback
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        throw new Error('Canvas vazio — html2canvas não renderizou.');
-      }
-
-      const ctx = canvas.getContext('2d');
-      const sampleH = Math.min(200, canvas.height);
-      const sample = ctx.getImageData(0, 0, canvas.width, sampleH).data;
-      let nonWhite = 0;
-      for (let i = 0; i < sample.length; i += 4) {
-        if (sample[i] < 250 || sample[i + 1] < 250 || sample[i + 2] < 250) nonWhite++;
-      }
-      if (nonWhite < 10) {
-        console.warn('[PDF] Canvas vazio detectado. Usando fallback nativo.');
-        wrapper.remove();
-        return generatePDFFallback(htmlContent, resolve, reject);
-      }
-
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-
-      const pageW = 210;
-      const pageH = 297;
-      const imgW = pageW;
-
-      const pxPerMm = canvas.width / pageW;
-      const pagePxH = Math.floor(pageH * pxPerMm);
-
-      if (canvas.height <= pagePxH) {
-        const imgH = (canvas.height * imgW) / canvas.width;
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgH);
+      if (imgH <= 297) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
       } else {
+        const pageCanvasHeight = Math.floor((canvas.width * 297) / 210);
         let yPx = 0;
-        let pageIndex = 0;
+        let page = 0;
         while (yPx < canvas.height) {
-          const sliceH = Math.min(pagePxH, canvas.height - yPx);
+          const sliceH = Math.min(pageCanvasHeight, canvas.height - yPx);
           const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = canvas.width;
           sliceCanvas.height = sliceH;
-          const sctx = sliceCanvas.getContext('2d');
-          sctx.fillStyle = '#ffffff';
-          sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          sctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-
-          const sliceImgH = (sliceH * imgW) / canvas.width;
-          if (pageIndex > 0) pdf.addPage();
-          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
-
+          sliceCanvas.getContext('2d').drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+          if (page > 0) pdf.addPage();
+          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, (sliceH * 210) / canvas.width);
           yPx += sliceH;
-          pageIndex++;
+          page++;
         }
       }
-
-      wrapper.remove();
+      container.remove();
       resolve(pdf.output('blob'));
-    } catch (err) {
-      wrapper.remove();
-      console.error('[PDF] Erro:', err);
-      generatePDFFallback(htmlContent, resolve, reject);
+
+    } else if (type === 'cut') {
+      const c = window.db.cuttingPlans.find(x => x.id === id);
+      if (!c) return reject(new Error('Plano de Corte não encontrado.'));
+      generatePDFTable(c, pdf, resolve, reject);
     }
   });
 }
