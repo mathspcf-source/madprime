@@ -665,7 +665,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — VERSÃO FINAL (paginação corrigida)
+// GERADOR DE PDF — VERSÃO FINAL (Vetorial para Cortes)
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -744,129 +744,112 @@ function buildBudgetHTML(b) {
 function generatePDFTable(c, pdf, resolve, reject) {
   try {
     const s = getCompanyInfo();
-    const PAGE_W = 210, PAGE_H = 297;
     const margin = 15;
-    const tableW = PAGE_W - margin * 2;      // 180mm, centralizado
-    const rowH = 10;
-    const bottomLimit = PAGE_H - 22;         // reserva espaço para o rodapé
-    const unit = c.unit || 'cm';
+    let y = 20; // Posição Y inicial na folha
 
-    // Colunas: larguras somam 180mm
-    const widths = [20, 30, 40, 40, 50];
-    const colStart = [];
-    widths.reduce((acc, w, i) => { colStart[i] = acc; return acc + w; }, margin);
-    const colCenter = widths.map((w, i) => colStart[i] + w / 2);
-
-    // Quadradinhos de fita centralizados na última coluna
-    const boxW = 6, boxGap = 2;
-    const fitaTotal = boxW * 4 + boxGap * 3;
-    const fitaX0 = colCenter[4] - fitaTotal / 2;
-    const cx = [0, 1, 2, 3].map(i => fitaX0 + i * (boxW + boxGap));
-    const labels = ['A1', 'A2', 'L1', 'L2'];
-
-    const drawTableHeader = (yy) => {
-      pdf.setLineDashPattern([], 0);
-      pdf.setFillColor(0, 0, 0);
-      pdf.rect(margin, yy, tableW, 8, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(10);
-      pdf.text('Peça', colCenter[0], yy + 5.5, { align: 'center' });
-      pdf.text('Qtd', colCenter[1], yy + 5.5, { align: 'center' });
-      pdf.text(`Alt (${unit})`, colCenter[2], yy + 5.5, { align: 'center' });
-      pdf.text(`Larg (${unit})`, colCenter[3], yy + 5.5, { align: 'center' });
-      pdf.text('Fita', colCenter[4], yy + 5.5, { align: 'center' });
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont('helvetica', 'normal');
-      return yy + 8;
-    };
-
-    const drawFooter = (pageNum, total) => {
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(100, 100, 100);
-      pdf.text(`${s.company_name} · CNPJ: ${s.cnpj} · ${s.address}`, PAGE_W / 2, PAGE_H - 12, { align: 'center', maxWidth: tableW });
-      pdf.text(`Página ${pageNum} de ${total}`, PAGE_W / 2, PAGE_H - 8, { align: 'center' });
-    };
-
-    let y = 20;
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(22);
-    pdf.setTextColor(0, 0, 0);
     pdf.text('Plano de Corte', margin, y);
-
+    
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Data: ${formatDate(c.created_at).split(' ')[0]}`, PAGE_W - margin, y, { align: 'right' });
-
+    pdf.text(`Data: ${formatDate(c.created_at).split(' ')[0]}`, 210 - margin, y, { align: 'right' });
+    
     y += 10;
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.text(`Projeto: ${c.name || 'Sem nome'}`, margin, y);
-
+    
     y += 6;
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
     pdf.text(`Cliente: ${c.client_name}`, margin, y);
     pdf.text(`Material: ${c.material_padrao || '—'}`, margin, y + 5);
-    pdf.text(`Medidas em: ${unit.toUpperCase()}`, PAGE_W - margin, y, { align: 'right' });
+    pdf.text(`Medidas em: ${(c.unit || 'cm').toUpperCase()}`, 210 - margin, y, { align: 'right' });
 
     y += 15;
-    y = drawTableHeader(y);
+
+    const colX = [margin, 35, 60, 105, 150];
+    pdf.setFillColor(0, 0, 0);
+    pdf.rect(margin, y, 210 - (margin * 2), 8, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Peça', colX[0] + 5, y + 5.5, { align: 'center' });
+    pdf.text('Qtd', colX[1] + 10, y + 5.5, { align: 'center' });
+    pdf.text(`Alt (${c.unit || 'cm'})`, colX[2] + 15, y + 5.5, { align: 'center' });
+    pdf.text(`Larg (${c.unit || 'cm'})`, colX[3] + 15, y + 5.5, { align: 'center' });
+    pdf.text('Fita', 170, y + 5.5, { align: 'center' });
+
+    y += 8;
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont('helvetica', 'normal');
 
     c.items.forEach((item, idx) => {
-      if (y + rowH > bottomLimit) {
+      // Se chegar perto do fim da página (280mm), cria nova página e repete o cabeçalho
+      if (y > 270) {
         pdf.addPage();
-        y = drawTableHeader(margin + 5);
+        y = 20;
+        
+        pdf.setFillColor(0, 0, 0);
+        pdf.rect(margin, y, 210 - (margin * 2), 8, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Peça', colX[0] + 5, y + 5.5, { align: 'center' });
+        pdf.text('Qtd', colX[1] + 10, y + 5.5, { align: 'center' });
+        pdf.text(`Alt (${c.unit || 'cm'})`, colX[2] + 15, y + 5.5, { align: 'center' });
+        pdf.text(`Larg (${c.unit || 'cm'})`, colX[3] + 15, y + 5.5, { align: 'center' });
+        pdf.text('Fita', 170, y + 5.5, { align: 'center' });
+        y += 8;
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
       }
 
       if (idx % 2 === 0) {
         pdf.setFillColor(248, 249, 250);
-        pdf.rect(margin, y, tableW, rowH, 'F');
+        pdf.rect(margin, y, 210 - (margin * 2), 10, 'F');
       }
 
-      pdf.setFontSize(10);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text(String(idx + 1), colCenter[0], y + 6.5, { align: 'center' });
-      pdf.text(String(item.qty || 1), colCenter[1], y + 6.5, { align: 'center' });
-      pdf.text(String(item.height), colCenter[2], y + 6.5, { align: 'center' });
-      pdf.text(String(item.width), colCenter[3], y + 6.5, { align: 'center' });
+      pdf.text(String(idx + 1), colX[0] + 5, y + 6.5, { align: 'center' });
+      pdf.text(String(item.qty || 1), colX[1] + 10, y + 6.5, { align: 'center' });
+      pdf.text(String(item.height), colX[2] + 15, y + 6.5, { align: 'center' });
+      pdf.text(String(item.width), colX[3] + 15, y + 6.5, { align: 'center' });
 
+      const cx = [160, 168, 176, 184];
+      const labels = ['A1', 'A2', 'L1', 'L2'];
       const states = [item.left, item.right, item.bottom, item.top];
+
       for (let i = 0; i < 4; i++) {
         pdf.setDrawColor(80, 80, 80);
         pdf.setLineWidth(0.3);
         pdf.setLineDashPattern([1, 1], 0);
-        pdf.rect(cx[i], y + 3, boxW, 4);
-
+        pdf.rect(cx[i], y + 3, 6, 4);
+        
         pdf.setFontSize(6);
         pdf.setTextColor(0, 0, 0);
-        pdf.text(labels[i], cx[i] + boxW / 2, y + 5.8, { align: 'center' });
-
+        pdf.text(labels[i], cx[i] + 3, y + 5.8, { align: 'center' });
+        
         if (states[i]) {
           pdf.setDrawColor(229, 57, 53);
           pdf.setLineWidth(0.8);
           pdf.setLineDashPattern([], 0);
           if (labels[i] === 'A1') pdf.line(cx[i] - 0.5, y + 3, cx[i] - 0.5, y + 7);
-          if (labels[i] === 'A2') pdf.line(cx[i] + boxW + 0.5, y + 3, cx[i] + boxW + 0.5, y + 7);
-          if (labels[i] === 'L1') pdf.line(cx[i], y + 7.5, cx[i] + boxW, y + 7.5);
-          if (labels[i] === 'L2') pdf.line(cx[i], y + 2.5, cx[i] + boxW, y + 2.5);
+          if (labels[i] === 'A2') pdf.line(cx[i] + 6.5, y + 3, cx[i] + 6.5, y + 7);
+          if (labels[i] === 'L1') pdf.line(cx[i], y + 7.5, cx[i] + 6, y + 7.5);
+          if (labels[i] === 'L2') pdf.line(cx[i], y + 2.5, cx[i] + 6, y + 2.5);
         }
       }
-
+      
       pdf.setLineDashPattern([], 0);
       pdf.setDrawColor(220, 220, 220);
       pdf.setLineWidth(0.2);
-      pdf.line(margin, y + rowH, PAGE_W - margin, y + rowH);
-      y += rowH;
+
+      pdf.line(margin, y + 10, 210 - margin, y + 10);
+      y += 10;
     });
 
-    // Rodapé em todas as páginas
-    const total = pdf.getNumberOfPages();
-    for (let p = 1; p <= total; p++) {
-      pdf.setPage(p);
-      drawFooter(p, total);
-    }
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`${s.company_name} · CNPJ: ${s.cnpj} · ${s.address}`, 105, 285, { align: 'center' });
 
     resolve(pdf.output('blob'));
   } catch (e) {
@@ -906,62 +889,28 @@ function generatePDFBlob(type, id) {
       }));
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-      try {
-        const SCALE = 2;
-        const canvas = await html2canvas(container, { scale: SCALE, useCORS: true, backgroundColor: '#ffffff' });
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgW = 210;
+      const imgH = (canvas.height * imgW) / canvas.width;
 
-        const PAGE_W = 210, PAGE_H = 297, MARGIN_Y = 12; // mm
-        const pxPerMm = canvas.width / PAGE_W;
-        const imgH = canvas.height / pxPerMm;
-
-        // Pontos seguros para quebrar página (fim de cada bloco e de cada linha da tabela)
-        const rootEl = container.firstElementChild;
-        const cTop = container.getBoundingClientRect().top;
-        const toPx = el => Math.round((el.getBoundingClientRect().bottom - cTop) * SCALE);
-        const breakPoints = [
-          ...Array.from(rootEl.children).map(toPx),
-          ...Array.from(rootEl.querySelectorAll('tbody tr')).map(toPx)
-        ].sort((a, b) => a - b);
-
-        if (imgH <= PAGE_H) {
-          pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, PAGE_W, imgH);
-        } else {
-          let yPx = 0;
-          let page = 0;
-          while (yPx < canvas.height - 1) {
-            // 1ª página já tem o padding do layout como margem superior
-            const topMm = page === 0 ? 0 : MARGIN_Y;
-            const availPx = Math.floor((PAGE_H - topMm - MARGIN_Y) * pxPerMm);
-
-            let end = yPx + availPx;
-            if (end >= canvas.height) {
-              end = canvas.height;
-            } else {
-              // Maior ponto seguro que caiba na página (nunca corta uma linha ao meio)
-              const candidates = breakPoints.filter(bp => bp > yPx + availPx * 0.3 && bp <= end);
-              if (candidates.length) end = candidates[candidates.length - 1];
-            }
-
-            const sliceH = end - yPx;
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = canvas.width;
-            sliceCanvas.height = sliceH;
-            const ctx = sliceCanvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, sliceCanvas.width, sliceH);
-            ctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-
-            if (page > 0) pdf.addPage();
-            // x = 0 com largura total: o conteúdo já é centralizado (container 800px com padding de 40px)
-            pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, topMm, PAGE_W, sliceH / pxPerMm);
-
-            yPx = end;
-            page++;
-          }
+      if (imgH <= 297) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
+      } else {
+        const pageCanvasHeight = Math.floor((canvas.width * 297) / 210);
+        let yPx = 0;
+        let page = 0;
+        while (yPx < canvas.height) {
+          const sliceH = Math.min(pageCanvasHeight, canvas.height - yPx);
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceH;
+          sliceCanvas.getContext('2d').drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+          if (page > 0) pdf.addPage();
+          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, (sliceH * 210) / canvas.width);
+          yPx += sliceH;
+          page++;
         }
-      } catch (err) {
-        container.remove();
-        return reject(err);
       }
       container.remove();
       resolve(pdf.output('blob'));
