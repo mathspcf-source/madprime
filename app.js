@@ -665,7 +665,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — VERSÃO FINAL (Quebra de Página Corrigida)
+// GERADOR DE PDF — VERSÃO CORRIGIDA (PDF EM BRANCO RESOLVIDO)
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -746,7 +746,7 @@ function buildCutPlanHTML(c) {
         </thead>
         <tbody>
           ${c.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6; page-break-inside: avoid;">
+            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
               <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
               <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
               <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
@@ -757,7 +757,7 @@ function buildCutPlanHTML(c) {
             </tr>`).join('')}
         </tbody>
       </table>
-      <div style="margin-top: 40px; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center; page-break-inside: avoid;">
+      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
         <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
@@ -803,7 +803,7 @@ function buildBudgetHTML(b) {
         </thead>
         <tbody>
           ${b.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6; page-break-inside: avoid;">
+            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
               <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
               <td style="padding:12px 10px; font-weight:500;">${escapeHtml(i.name)}</td>
               <td style="text-align:center; padding:12px 10px;">${i.qty}</td>
@@ -812,14 +812,53 @@ function buildBudgetHTML(b) {
             </tr>`).join('')}
         </tbody>
       </table>
-      <div style="display:flex; justify-content:flex-end; margin-bottom:60px; page-break-inside: avoid;">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:60px;">
         <div style="background:#000000; color:#ffffff; padding:12px 24px; font-size:16px; font-weight:600; border-radius:4px;">${formatCurrency(b.total)}</div>
       </div>
-      ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:40px; padding-top:20px; border-top:1px solid #dddddd; page-break-inside: avoid;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
-      <div style="margin-top: 40px; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center; page-break-inside: avoid;">
+      ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:40px; padding-top:20px; border-top:1px solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
+      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
         <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
       </div>
     </div>`;
+}
+
+function generatePDFFallback(htmlContent, resolve, reject) {
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    const temp = document.createElement('div');
+    temp.style.position = 'fixed';
+    temp.style.left = '0';
+    temp.style.top = '0';
+    temp.style.width = '800px';
+    temp.style.background = '#ffffff';
+    temp.style.zIndex = '9999';
+    temp.innerHTML = htmlContent;
+    document.body.appendChild(temp);
+
+    pdf.html(temp, {
+      x: 0,
+      y: 0,
+      width: 210,
+      windowWidth: 800,
+      html2canvas: {
+        scale: 0.7,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      },
+      callback: (doc) => {
+        temp.remove();
+        resolve(doc.output('blob'));
+      }
+    }).catch((e) => {
+      temp.remove();
+      reject(e);
+    });
+  } catch (e) {
+    reject(e);
+  }
 }
 
 function generatePDFBlob(type, id) {
@@ -835,65 +874,140 @@ function generatePDFBlob(type, id) {
       htmlContent = buildCutPlanHTML(c);
     }
 
-    // 1) Carrega fontes
+    // 1) Garante que a fonte Inter esteja carregada
     try {
       await document.fonts.load('400 14px Inter');
+      await document.fonts.load('500 14px Inter');
+      await document.fonts.load('600 14px Inter');
       await document.fonts.load('700 14px Inter');
+      await document.fonts.load('800 14px Inter');
       await document.fonts.ready;
-    } catch (_) {}
+    } catch (_) { /* ignora */ }
 
-    // 2) Cria o container visível
+    // 2) Wrapper visível, mas fora da viewport (NÃO usa opacity:0 nem z-index negativo)
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '0';
+    wrapper.style.left = '0';
+    wrapper.style.transform = 'translateX(-200vw)';
+    wrapper.style.width = '800px';
+    wrapper.style.height = 'auto';
+    wrapper.style.zIndex = '1';
+    wrapper.style.background = '#ffffff';
+    wrapper.style.pointerEvents = 'none';
+    wrapper.style.overflow = 'visible';
+
     const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.transform = 'translateX(-200vw)';
     container.style.width = '800px';
+    container.style.minHeight = '1120px';
     container.style.background = '#ffffff';
-    container.style.zIndex = '1';
+    container.style.color = '#000000';
     container.innerHTML = htmlContent;
-    document.body.appendChild(container);
 
-    // 3) Aguarda imagens
+    wrapper.appendChild(container);
+    document.body.appendChild(wrapper);
+
+    // 3) Aguarda imagens (logo) carregarem
     const imgs = Array.from(container.querySelectorAll('img'));
     await Promise.all(imgs.map(img => {
       if (img.complete && img.naturalWidth > 0) return Promise.resolve();
       return new Promise(res => {
-        img.onload = res; img.onerror = res; setTimeout(res, 3000);
+        img.onload = res;
+        img.onerror = res;
+        setTimeout(res, 3000);
       });
     }));
 
+    // 4) Aguarda 2 frames de renderização
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
+    // 5) Força reflow e mede altura real
+    void container.offsetHeight;
+    const realHeight = Math.max(container.scrollHeight, container.offsetHeight, 1120);
+
     try {
+      // 6) Captura
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 800,
+        height: realHeight,
+        windowWidth: 800,
+        windowHeight: realHeight,
+        scrollX: 0,
+        scrollY: 0,
+        logging: false,
+        onclone: (clonedDoc, clonedEl) => {
+          clonedEl.style.position = 'static';
+          clonedEl.style.transform = 'none';
+          clonedEl.style.opacity = '1';
+          clonedEl.style.visibility = 'visible';
+          clonedEl.style.display = 'block';
+          clonedEl.style.background = '#ffffff';
+        }
+      });
+
+      // 7) Sanity check — se canvas em branco, usa fallback
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error('Canvas vazio — html2canvas não renderizou.');
+      }
+
+      const ctx = canvas.getContext('2d');
+      const sampleH = Math.min(200, canvas.height);
+      const sample = ctx.getImageData(0, 0, canvas.width, sampleH).data;
+      let nonWhite = 0;
+      for (let i = 0; i < sample.length; i += 4) {
+        if (sample[i] < 250 || sample[i + 1] < 250 || sample[i + 2] < 250) nonWhite++;
+      }
+      if (nonWhite < 10) {
+        console.warn('[PDF] Canvas vazio detectado. Usando fallback nativo.');
+        wrapper.remove();
+        return generatePDFFallback(htmlContent, resolve, reject);
+      }
+
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
 
-      // 4) Usa o renderizador nativo do jsPDF (respeita quebras de linha)
-      await new Promise((res, rej) => {
-        pdf.html(container, {
-          x: 0,
-          y: 0,
-          width: 210, // Largura A4
-          windowWidth: 800, // Largura do HTML
-          autoPaging: 'text', // FATIAMENTO INTELIGENTE: Corta apenas em espaços vazios entre textos
-          html2canvas: {
-            scale: 0.65, // Reduz a escala para caber mais coisas e evitar imagem gigante
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            logging: false
-          },
-          callback: (doc) => res(doc),
-          margin: [10, 0, 10, 0] // Margem de 10mm em cima e embaixo para o rodapé respirar
-        }).catch(rej);
-      });
+      const pageW = 210;
+      const pageH = 297;
+      const imgW = pageW;
 
-      container.remove();
+      const pxPerMm = canvas.width / pageW;
+      const pagePxH = Math.floor(pageH * pxPerMm);
+
+      if (canvas.height <= pagePxH) {
+        const imgH = (canvas.height * imgW) / canvas.width;
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgH);
+      } else {
+        let yPx = 0;
+        let pageIndex = 0;
+        while (yPx < canvas.height) {
+          const sliceH = Math.min(pagePxH, canvas.height - yPx);
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceH;
+          const sctx = sliceCanvas.getContext('2d');
+          sctx.fillStyle = '#ffffff';
+          sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          sctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+          const sliceImgH = (sliceH * imgW) / canvas.width;
+          if (pageIndex > 0) pdf.addPage();
+          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
+
+          yPx += sliceH;
+          pageIndex++;
+        }
+      }
+
+      wrapper.remove();
       resolve(pdf.output('blob'));
     } catch (err) {
-      container.remove();
+      wrapper.remove();
       console.error('[PDF] Erro:', err);
-      reject(err);
+      generatePDFFallback(htmlContent, resolve, reject);
     }
   });
 }
