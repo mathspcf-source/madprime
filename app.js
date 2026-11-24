@@ -665,7 +665,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — VERSÃO FINAL (Quebra de Página Correta)
+// GERADOR DE PDF — VERSÃO FINAL (paginação corrigida)
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -680,85 +680,6 @@ function getCompanyInfo() {
     number_prefix: s.number_prefix || 'MP-2026-',
     default_conditions: s.default_conditions || ''
   };
-}
-
-function buildFitaPDF(i) {
-  const bar = {
-    left:   'top:-3px; bottom:-3px; left:-6px; width:5px;',
-    right:  'top:-3px; bottom:-3px; right:-6px; width:5px;',
-    bottom: 'left:-3px; right:-3px; bottom:-6px; height:5px;',
-    top:    'left:-3px; right:-3px; top:-6px; height:5px;'
-  };
-  const box = (label, edge) => `
-    <div style="display:inline-block; position:relative; width:26px; height:26px; box-sizing:border-box; border:2px dashed #555; margin:0 6px; vertical-align:middle; text-align:center; line-height:22px; font-size:10px; font-weight:800; color:#000; font-family:Inter, Arial, sans-serif;">
-      ${label}
-      ${i[edge] ? `<div style="position:absolute; ${bar[edge]} background:#e53935;"></div>` : ''}
-    </div>`;
-  return box('A1', 'left') + box('A2', 'right') + box('L1', 'bottom') + box('L2', 'top');
-}
-
-function buildCutPlanHTML(c) {
-  const s = getCompanyInfo();
-  const logoSVG = s.logo ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">` : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
-  const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
-  const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
-  const dataObj = new Date(c.created_at);
-  const dia = dataObj.getDate().toString().padStart(2, '0');
-  const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
-  const numCurto = c.number.split('-').pop();
-  const handle = s.company_name.replace(/\s+/g, '');
-  const unitLabel = (c.unit || 'cm').toUpperCase();
-
-  return `
-    <div style="width:800px; margin:0 auto; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:40px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:40px;">
-        <div>${logoSVG}</div>
-        <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:30px;">
-        <h1 style="font-size:42px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Plano de Corte</h1>
-        <div style="font-size:18px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
-      </div>
-      <div style="margin-bottom:20px; font-size:22px; font-weight:700;">${escapeHtml(c.name || 'Sem nome')}</div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:30px;">
-        <div style="font-size:14px; color:#000000; line-height:1.6;">
-          ${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
-        </div>
-        <div style="font-size:24px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
-      </div>
-      <div style="margin-bottom:30px; font-size:14px; display:flex; justify-content:space-between; align-items:flex-start;">
-        <div>
-          <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
-          <div style="margin-top:0.3rem;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
-        </div>
-        <div style="font-weight:700; border:1px solid #000; padding:2px 8px; border-radius:4px;">Medidas em ${unitLabel}</div>
-      </div>
-      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px;">
-        <thead>
-          <tr style="background:#000000; color:#ffffff;">
-            <th style="text-align:center; padding:10px; width:50px; border-radius:4px 0 0 4px;">Peça</th>
-            <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
-            <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:190px; border-radius:0 4px 4px 0;">Fita</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${c.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6; page-break-inside: avoid;">
-              <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
-              <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
-              <td style="text-align:center; padding:12px 10px;">${buildFitaPDF(i)}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-      <div style="margin-top: 20px; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
-        <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
-      </div>
-    </div>`;
 }
 
 function buildBudgetHTML(b) {
@@ -820,109 +741,235 @@ function buildBudgetHTML(b) {
     </div>`;
 }
 
-function generatePDFBlob(type, id) {
-  return new Promise(async (resolve, reject) => {
-    let htmlContent = '';
-    if (type === 'budget') {
-      const b = window.db.budgets.find(x => x.id === id);
-      if (!b) return reject(new Error('Orçamento não encontrado.'));
-      htmlContent = buildBudgetHTML(b);
-    } else if (type === 'cut') {
-      const c = window.db.cuttingPlans.find(x => x.id === id);
-      if (!c) return reject(new Error('Plano de Corte não encontrado.'));
-      htmlContent = buildCutPlanHTML(c);
+function generatePDFTable(c, pdf, resolve, reject) {
+  try {
+    const s = getCompanyInfo();
+    const PAGE_W = 210, PAGE_H = 297;
+    const margin = 15;
+    const tableW = PAGE_W - margin * 2;      // 180mm, centralizado
+    const rowH = 10;
+    const bottomLimit = PAGE_H - 22;         // reserva espaço para o rodapé
+    const unit = c.unit || 'cm';
+
+    // Colunas: larguras somam 180mm
+    const widths = [20, 30, 40, 40, 50];
+    const colStart = [];
+    widths.reduce((acc, w, i) => { colStart[i] = acc; return acc + w; }, margin);
+    const colCenter = widths.map((w, i) => colStart[i] + w / 2);
+
+    // Quadradinhos de fita centralizados na última coluna
+    const boxW = 6, boxGap = 2;
+    const fitaTotal = boxW * 4 + boxGap * 3;
+    const fitaX0 = colCenter[4] - fitaTotal / 2;
+    const cx = [0, 1, 2, 3].map(i => fitaX0 + i * (boxW + boxGap));
+    const labels = ['A1', 'A2', 'L1', 'L2'];
+
+    const drawTableHeader = (yy) => {
+      pdf.setLineDashPattern([], 0);
+      pdf.setFillColor(0, 0, 0);
+      pdf.rect(margin, yy, tableW, 8, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.text('Peça', colCenter[0], yy + 5.5, { align: 'center' });
+      pdf.text('Qtd', colCenter[1], yy + 5.5, { align: 'center' });
+      pdf.text(`Alt (${unit})`, colCenter[2], yy + 5.5, { align: 'center' });
+      pdf.text(`Larg (${unit})`, colCenter[3], yy + 5.5, { align: 'center' });
+      pdf.text('Fita', colCenter[4], yy + 5.5, { align: 'center' });
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('helvetica', 'normal');
+      return yy + 8;
+    };
+
+    const drawFooter = (pageNum, total) => {
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`${s.company_name} · CNPJ: ${s.cnpj} · ${s.address}`, PAGE_W / 2, PAGE_H - 12, { align: 'center', maxWidth: tableW });
+      pdf.text(`Página ${pageNum} de ${total}`, PAGE_W / 2, PAGE_H - 8, { align: 'center' });
+    };
+
+    let y = 20;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(22);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('Plano de Corte', margin, y);
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Data: ${formatDate(c.created_at).split(' ')[0]}`, PAGE_W - margin, y, { align: 'right' });
+
+    y += 10;
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`Projeto: ${c.name || 'Sem nome'}`, margin, y);
+
+    y += 6;
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Cliente: ${c.client_name}`, margin, y);
+    pdf.text(`Material: ${c.material_padrao || '—'}`, margin, y + 5);
+    pdf.text(`Medidas em: ${unit.toUpperCase()}`, PAGE_W - margin, y, { align: 'right' });
+
+    y += 15;
+    y = drawTableHeader(y);
+
+    c.items.forEach((item, idx) => {
+      if (y + rowH > bottomLimit) {
+        pdf.addPage();
+        y = drawTableHeader(margin + 5);
+      }
+
+      if (idx % 2 === 0) {
+        pdf.setFillColor(248, 249, 250);
+        pdf.rect(margin, y, tableW, rowH, 'F');
+      }
+
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(String(idx + 1), colCenter[0], y + 6.5, { align: 'center' });
+      pdf.text(String(item.qty || 1), colCenter[1], y + 6.5, { align: 'center' });
+      pdf.text(String(item.height), colCenter[2], y + 6.5, { align: 'center' });
+      pdf.text(String(item.width), colCenter[3], y + 6.5, { align: 'center' });
+
+      const states = [item.left, item.right, item.bottom, item.top];
+      for (let i = 0; i < 4; i++) {
+        pdf.setDrawColor(80, 80, 80);
+        pdf.setLineWidth(0.3);
+        pdf.setLineDashPattern([1, 1], 0);
+        pdf.rect(cx[i], y + 3, boxW, 4);
+
+        pdf.setFontSize(6);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(labels[i], cx[i] + boxW / 2, y + 5.8, { align: 'center' });
+
+        if (states[i]) {
+          pdf.setDrawColor(229, 57, 53);
+          pdf.setLineWidth(0.8);
+          pdf.setLineDashPattern([], 0);
+          if (labels[i] === 'A1') pdf.line(cx[i] - 0.5, y + 3, cx[i] - 0.5, y + 7);
+          if (labels[i] === 'A2') pdf.line(cx[i] + boxW + 0.5, y + 3, cx[i] + boxW + 0.5, y + 7);
+          if (labels[i] === 'L1') pdf.line(cx[i], y + 7.5, cx[i] + boxW, y + 7.5);
+          if (labels[i] === 'L2') pdf.line(cx[i], y + 2.5, cx[i] + boxW, y + 2.5);
+        }
+      }
+
+      pdf.setLineDashPattern([], 0);
+      pdf.setDrawColor(220, 220, 220);
+      pdf.setLineWidth(0.2);
+      pdf.line(margin, y + rowH, PAGE_W - margin, y + rowH);
+      y += rowH;
+    });
+
+    // Rodapé em todas as páginas
+    const total = pdf.getNumberOfPages();
+    for (let p = 1; p <= total; p++) {
+      pdf.setPage(p);
+      drawFooter(p, total);
     }
 
+    resolve(pdf.output('blob'));
+  } catch (e) {
+    reject(e);
+  }
+}
+
+function generatePDFBlob(type, id) {
+  return new Promise(async (resolve, reject) => {
     try {
       await document.fonts.load('400 14px Inter');
       await document.fonts.load('700 14px Inter');
       await document.fonts.ready;
     } catch (_) {}
 
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '0';
-    container.style.top = '0';
-    container.style.transform = 'translateX(-200vw)';
-    container.style.width = '800px';
-    container.style.background = '#ffffff';
-    container.style.zIndex = '1';
-    container.innerHTML = htmlContent;
-    document.body.appendChild(container);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
 
-    const imgs = Array.from(container.querySelectorAll('img'));
-    await Promise.all(imgs.map(img => {
-      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-      return new Promise(res => { img.onload = res; img.onerror = res; setTimeout(res, 3000); });
-    }));
-
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    try {
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 800,
-        height: container.offsetHeight,
-        windowWidth: 800,
-        windowHeight: container.offsetHeight,
-        scrollX: 0,
-        scrollY: 0,
-        logging: false,
-        onclone: (clonedDoc, clonedEl) => {
-          clonedEl.style.position = 'static';
-          clonedEl.style.transform = 'none';
-          clonedEl.style.opacity = '1';
-          clonedEl.style.visibility = 'visible';
-        }
-      });
-
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-
-      const pageW = 210;
-      const pageH = 297;
+    if (type === 'budget') {
+      const b = window.db.budgets.find(x => x.id === id);
+      if (!b) return reject(new Error('Orçamento não encontrado.'));
       
-      const imgW = pageW;
-      const imgHTotal = (canvas.height * imgW) / canvas.width;
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '0';
+      container.style.top = '0';
+      container.style.transform = 'translateX(-200vw)';
+      container.style.width = '800px';
+      container.style.background = '#ffffff';
+      container.innerHTML = buildBudgetHTML(b);
+      document.body.appendChild(container);
 
-      if (imgHTotal <= pageH) {
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgHTotal);
-      } else {
-        // Cálculo exato de quantos pixels equivalem a uma folha A4 inteira
-        const pageCanvasHeight = Math.floor((canvas.width * pageH) / pageW);
-        let yPx = 0;
-        let pageIndex = 0;
+      const imgs = Array.from(container.querySelectorAll('img'));
+      await Promise.all(imgs.map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(res => { img.onload = res; img.onerror = res; setTimeout(res, 3000); });
+      }));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-        while (yPx < canvas.height) {
-          const sliceH = Math.min(pageCanvasHeight, canvas.height - yPx);
-          
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sliceH;
-          const ctx = sliceCanvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      try {
+        const SCALE = 2;
+        const canvas = await html2canvas(container, { scale: SCALE, useCORS: true, backgroundColor: '#ffffff' });
 
-          if (pageIndex > 0) pdf.addPage();
-          
-          const sliceImgH = (sliceH * imgW) / canvas.width;
-          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
+        const PAGE_W = 210, PAGE_H = 297, MARGIN_Y = 12; // mm
+        const pxPerMm = canvas.width / PAGE_W;
+        const imgH = canvas.height / pxPerMm;
 
-          yPx += sliceH;
-          pageIndex++;
+        // Pontos seguros para quebrar página (fim de cada bloco e de cada linha da tabela)
+        const rootEl = container.firstElementChild;
+        const cTop = container.getBoundingClientRect().top;
+        const toPx = el => Math.round((el.getBoundingClientRect().bottom - cTop) * SCALE);
+        const breakPoints = [
+          ...Array.from(rootEl.children).map(toPx),
+          ...Array.from(rootEl.querySelectorAll('tbody tr')).map(toPx)
+        ].sort((a, b) => a - b);
+
+        if (imgH <= PAGE_H) {
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, PAGE_W, imgH);
+        } else {
+          let yPx = 0;
+          let page = 0;
+          while (yPx < canvas.height - 1) {
+            // 1ª página já tem o padding do layout como margem superior
+            const topMm = page === 0 ? 0 : MARGIN_Y;
+            const availPx = Math.floor((PAGE_H - topMm - MARGIN_Y) * pxPerMm);
+
+            let end = yPx + availPx;
+            if (end >= canvas.height) {
+              end = canvas.height;
+            } else {
+              // Maior ponto seguro que caiba na página (nunca corta uma linha ao meio)
+              const candidates = breakPoints.filter(bp => bp > yPx + availPx * 0.3 && bp <= end);
+              if (candidates.length) end = candidates[candidates.length - 1];
+            }
+
+            const sliceH = end - yPx;
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = sliceH;
+            const ctx = sliceCanvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, sliceCanvas.width, sliceH);
+            ctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+            if (page > 0) pdf.addPage();
+            // x = 0 com largura total: o conteúdo já é centralizado (container 800px com padding de 40px)
+            pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, topMm, PAGE_W, sliceH / pxPerMm);
+
+            yPx = end;
+            page++;
+          }
         }
+      } catch (err) {
+        container.remove();
+        return reject(err);
       }
-
       container.remove();
       resolve(pdf.output('blob'));
-    } catch (err) {
-      container.remove();
-      console.error('[PDF] Erro:', err);
-      reject(err);
+
+    } else if (type === 'cut') {
+      const c = window.db.cuttingPlans.find(x => x.id === id);
+      if (!c) return reject(new Error('Plano de Corte não encontrado.'));
+      generatePDFTable(c, pdf, resolve, reject);
     }
   });
 }
