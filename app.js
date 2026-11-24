@@ -665,7 +665,7 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — VERSÃO FINAL (FATIAMENTO A4 PERFEITO)
+// GERADOR DE PDF — VERSÃO FINAL (Quebra de Página Correta)
 // ============================================================
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -843,9 +843,8 @@ function generatePDFBlob(type, id) {
     container.style.position = 'fixed';
     container.style.left = '0';
     container.style.top = '0';
-    container.style.transform = 'translateX(-200vw)';
+    container.style.transform = 'translateX(-200vw)'; // Fora da tela, mas visível pro html2canvas
     container.style.width = '800px';
-    container.style.height = 'auto';
     container.style.background = '#ffffff';
     container.style.zIndex = '1';
     container.innerHTML = htmlContent;
@@ -860,62 +859,22 @@ function generatePDFBlob(type, id) {
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     try {
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 800,
-        height: container.offsetHeight,
-        windowWidth: 800,
-        windowHeight: container.offsetHeight,
-        scrollX: 0,
-        scrollY: 0,
-        logging: false,
-        onclone: (clonedDoc, clonedEl) => {
-          clonedEl.style.position = 'static';
-          clonedEl.style.transform = 'none';
-          clonedEl.style.opacity = '1';
-          clonedEl.style.visibility = 'visible';
-        }
-      });
-
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
 
-      const pageW = 210;
-      const pageH = 297;
-      
-      const imgW = pageW;
-      const imgHTotal = (canvas.height * imgW) / canvas.width;
-
-      if (imgHTotal <= pageH) {
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgHTotal);
-      } else {
-        const pageCanvasHeight = Math.floor((canvas.width * pageH) / pageW);
-        let yPx = 0;
-        let pageIndex = 0;
-
-        while (yPx < canvas.height) {
-          const sliceH = Math.min(pageCanvasHeight, canvas.height - yPx);
-          
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sliceH;
-          const ctx = sliceCanvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-
-          if (pageIndex > 0) pdf.addPage();
-          
-          const sliceImgH = (sliceH * imgW) / canvas.width;
-          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
-
-          yPx += sliceH;
-          pageIndex++;
-        }
-      }
+      // Usa o motor nativo do jsPDF que respeita as quebras de página do CSS (page-break-inside)
+      await new Promise((res, rej) => {
+        pdf.html(container, {
+          x: 0,
+          y: 0,
+          width: 210,
+          windowWidth: 800,
+          autoPaging: 'text', 
+          html2canvas: { scale: 0.65, useCORS: true, backgroundColor: '#ffffff' },
+          margin: [10, 0, 10, 0],
+          callback: (doc) => res(doc)
+        }).catch(rej);
+      });
 
       container.remove();
       resolve(pdf.output('blob'));
