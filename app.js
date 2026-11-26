@@ -665,13 +665,14 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — A4 REAL (210mm × 297mm)
+// GERADOR DE PDF — A4 REAL COM PAGINAÇÃO HTML
 // ============================================================
 const A4_W_MM = 210;
 const A4_H_MM = 297;
-// 96 dpi CSS: 210mm = 793.7px, 297mm = 1122.5px
 const A4_W_PX = Math.round((A4_W_MM / 25.4) * 96); // ≈794
 const A4_H_PX = Math.round((A4_H_MM / 25.4) * 96); // ≈1123
+const A4_PAD_TOP_PX = Math.round((15 / 25.4) * 96);
+const A4_PAD_BOT_PX = Math.round((12 / 25.4) * 96);
 
 function getCompanyInfo() {
   const s = window.db.settings || {};
@@ -703,157 +704,111 @@ function buildFitaPDF(i) {
   return box('A1', 'left') + box('A2', 'right') + box('L1', 'bottom') + box('L2', 'top');
 }
 
-// Corpo padrão A4 — todo em mm/pt, preenche 297mm com flex
-function buildA4Wrapper(innerHTML) {
-  return `
-    <div style="width:${A4_W_MM}mm; min-height:${A4_H_MM}mm; box-sizing:border-box; padding:15mm 15mm 12mm 15mm; background:#ffffff; color:#000000; font-family:'Inter', Arial, sans-serif; font-size:10pt; line-height:1.4; display:flex; flex-direction:column; overflow:hidden;">
-      ${innerHTML}
-    </div>`;
-}
-
-function buildCutPlanHTML(c) {
-  const s = getCompanyInfo();
+function pdfHeaderBlock(s) {
   const logoSVG = s.logo
     ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:12mm; max-width:40mm; object-fit:contain;">`
     : `<div style="background:#000000; color:#ffffff; padding:2mm 4mm; font-size:9pt; font-weight:700; letter-spacing:1mm; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
-  const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
-  const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
-  const dataObj = new Date(c.created_at);
-  const dia = dataObj.getDate().toString().padStart(2, '0');
-  const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
-  const numCurto = c.number.split('-').pop();
   const handle = s.company_name.replace(/\s+/g, '');
-  const unitLabel = (c.unit || 'cm').toUpperCase();
-
-  return buildA4Wrapper(`
+  return `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12mm;">
       <div>${logoSVG}</div>
       <div style="font-size:8pt; font-weight:700; color:#000000; letter-spacing:0.5mm; text-transform:uppercase;">@${escapeHtml(handle)}</div>
-    </div>
+    </div>`;
+}
 
+function pdfFooterBlock(s) {
+  return `
+    <div style="font-size:7.5pt; color:#000000; border-top:0.2mm solid #dddddd; padding-top:4mm; text-align:center;">
+      <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
+    </div>`;
+}
+
+function pdfDocTitleBlock(s, doc, dateStr, numCurto) {
+  const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
+  const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
+  return `
     <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10mm;">
-      <h1 style="font-size:26pt; font-weight:800; color:#000000; margin:0; letter-spacing:-0.5mm; line-height:1;">Plano de Corte</h1>
-      <div style="font-size:11pt; font-weight:600; color:#000000;">${dataFormatada}</div>
+      <h1 style="font-size:26pt; font-weight:800; color:#000000; margin:0; letter-spacing:-0.5mm; line-height:1;">${doc}</h1>
+      <div style="font-size:11pt; font-weight:600; color:#000000;">${dateStr}</div>
     </div>
-
-    <div style="margin-bottom:5mm; font-size:13pt; font-weight:700;">${escapeHtml(c.name || 'Sem nome')}</div>
-
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8mm;">
       <div style="font-size:9pt; color:#000000; line-height:1.5;">
         ${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
       </div>
       <div style="font-size:14pt; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
-    </div>
+    </div>`;
+}
 
-    <div style="margin-bottom:6mm; font-size:9.5pt; display:flex; justify-content:space-between; align-items:flex-start;">
-      <div>
-        <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
-        <div style="margin-top:1mm;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
+function pdfMetaBlock(extra) {
+  return `<div style="margin-bottom:6mm; font-size:9.5pt; display:flex; justify-content:space-between; align-items:flex-start;">${extra}</div>`;
+}
+
+function pdfTableHeadCutPlan(unitLabel) {
+  return `
+    <thead>
+      <tr style="background:#000000; color:#ffffff;">
+        <th style="text-align:center; padding:2.5mm 1mm; width:12mm; border-radius:1mm 0 0 1mm;">Peça</th>
+        <th style="text-align:center; padding:2.5mm 1mm; width:15mm;">Qtd</th>
+        <th style="text-align:center; padding:2.5mm 1mm; width:25mm;">Alt (${unitLabel})</th>
+        <th style="text-align:center; padding:2.5mm 1mm; width:25mm;">Larg (${unitLabel})</th>
+        <th style="text-align:center; padding:2.5mm 1mm; width:55mm; border-radius:0 1mm 1mm 0;">Fita</th>
+      </tr>
+    </thead>`;
+}
+
+function pdfTableHeadBudget() {
+  return `
+    <thead>
+      <tr style="background:#000000; color:#ffffff;">
+        <th style="text-align:center; padding:2.5mm 1mm; width:10mm; border-radius:1mm 0 0 1mm;">Nº</th>
+        <th style="text-align:left; padding:2.5mm 1mm;">Material</th>
+        <th style="text-align:center; padding:2.5mm 1mm; width:13mm;">Qtd</th>
+        <th style="text-align:right; padding:2.5mm 1mm; width:25mm;">Preço</th>
+        <th style="text-align:right; padding:2.5mm 1mm; width:25mm; border-radius:0 1mm 1mm 0;">Total</th>
+      </tr>
+    </thead>`;
+}
+
+async function measureBlockHeight(html) {
+  const probe = document.createElement('div');
+  probe.style.position = 'fixed';
+  probe.style.left = '-9999px';
+  probe.style.top = '0';
+  probe.style.width = `${A4_W_PX - 2 * A4_PAD_TOP_PX}px`;
+  probe.style.background = '#fff';
+  probe.style.visibility = 'hidden';
+  probe.innerHTML = html;
+  document.body.appendChild(probe);
+  const h = probe.offsetHeight;
+  probe.remove();
+  return h;
+}
+
+function buildA4Page(headerHTML, bodyHTML, footerHTML) {
+  return `
+    <div style="
+      width:${A4_W_MM}mm;
+      height:${A4_H_MM}mm;
+      box-sizing:border-box;
+      padding:15mm 15mm 12mm 15mm;
+      background:#ffffff;
+      color:#000000;
+      font-family:'Inter', Arial, sans-serif;
+      font-size:10pt;
+      line-height:1.4;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    ">
+      ${headerHTML}
+      <div style="flex:1; overflow:hidden;">
+        ${bodyHTML}
       </div>
-      <div style="font-weight:700; border:0.3mm solid #000; padding:1mm 2.5mm; border-radius:1mm;">Medidas em ${unitLabel}</div>
-    </div>
-
-    <table style="width:100%; border-collapse:collapse; margin-bottom:4mm; font-size:9pt; table-layout:fixed;">
-      <thead>
-        <tr style="background:#000000; color:#ffffff;">
-          <th style="text-align:center; padding:2.5mm 1mm; width:12mm; border-radius:1mm 0 0 1mm;">Peça</th>
-          <th style="text-align:center; padding:2.5mm 1mm; width:15mm;">Qtd</th>
-          <th style="text-align:center; padding:2.5mm 1mm; width:25mm;">Alt (${unitLabel})</th>
-          <th style="text-align:center; padding:2.5mm 1mm; width:25mm;">Larg (${unitLabel})</th>
-          <th style="text-align:center; padding:2.5mm 1mm; width:55mm; border-radius:0 1mm 1mm 0;">Fita</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${c.items.map((i, idx) => `
-          <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6; page-break-inside:avoid;">
-            <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${idx + 1}</td>
-            <td style="text-align:center; padding:3mm 1mm;">${i.qty || 1}</td>
-            <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${i.height}</td>
-            <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${i.width}</td>
-            <td style="text-align:center; padding:3mm 1mm;">
-              ${buildFitaPDF(i)}
-            </td>
-          </tr>`).join('')}
-      </tbody>
-    </table>
-
-    <div style="margin-top:auto; font-size:7.5pt; color:#000000; border-top:0.2mm solid #dddddd; padding-top:4mm; text-align:center;">
-      <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
-    </div>
-  `);
+      ${footerHTML}
+    </div>`;
 }
 
-function buildBudgetHTML(b) {
-  const s = getCompanyInfo();
-  const logoSVG = s.logo
-    ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:12mm; max-width:40mm; object-fit:contain;">`
-    : `<div style="background:#000000; color:#ffffff; padding:2mm 4mm; font-size:9pt; font-weight:700; letter-spacing:1mm; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
-  const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
-  const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
-  const conditions = (b.conditions || s.default_conditions || '').trim();
-  const dataObj = new Date(b.created_at);
-  const dia = dataObj.getDate().toString().padStart(2, '0');
-  const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
-  const numCurto = b.number.split('-').pop();
-  const handle = s.company_name.replace(/\s+/g, '');
-
-  return buildA4Wrapper(`
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12mm;">
-      <div>${logoSVG}</div>
-      <div style="font-size:8pt; font-weight:700; color:#000000; letter-spacing:0.5mm; text-transform:uppercase;">@${escapeHtml(handle)}</div>
-    </div>
-
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10mm;">
-      <h1 style="font-size:26pt; font-weight:800; color:#000000; margin:0; letter-spacing:-0.5mm; line-height:1;">Orçamento</h1>
-      <div style="font-size:11pt; font-weight:600; color:#000000;">${dataFormatada}</div>
-    </div>
-
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8mm;">
-      <div style="font-size:9pt; color:#000000; line-height:1.5;">${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
-      <div style="font-size:14pt; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
-    </div>
-
-    <div style="margin-bottom:6mm; font-size:9.5pt;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>
-
-    <table style="width:100%; border-collapse:collapse; margin-bottom:4mm; font-size:9pt; table-layout:fixed;">
-      <thead>
-        <tr style="background:#000000; color:#ffffff;">
-          <th style="text-align:center; padding:2.5mm 1mm; width:10mm; border-radius:1mm 0 0 1mm;">Nº</th>
-          <th style="text-align:left; padding:2.5mm 1mm;">Material</th>
-          <th style="text-align:center; padding:2.5mm 1mm; width:13mm;">Qtd</th>
-          <th style="text-align:right; padding:2.5mm 1mm; width:25mm;">Preço</th>
-          <th style="text-align:right; padding:2.5mm 1mm; width:25mm; border-radius:0 1mm 1mm 0;">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${b.items.map((i, idx) => `
-          <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6; page-break-inside:avoid;">
-            <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${idx + 1}</td>
-            <td style="padding:3mm 1mm; font-weight:500; word-break:break-word;">${escapeHtml(i.name)}</td>
-            <td style="text-align:center; padding:3mm 1mm;">${i.qty}</td>
-            <td style="text-align:right; padding:3mm 1mm; white-space:nowrap;">${formatCurrency(i.price)}</td>
-            <td style="text-align:right; padding:3mm 1mm; font-weight:700; white-space:nowrap;">${formatCurrency(i.price * i.qty)}</td>
-          </tr>`).join('')}
-      </tbody>
-    </table>
-
-    <div style="display:flex; justify-content:flex-end; margin-bottom:10mm;">
-      <div style="background:#000000; color:#ffffff; padding:3mm 6mm; font-size:11pt; font-weight:600; border-radius:1mm;">${formatCurrency(b.total)}</div>
-    </div>
-
-    ${conditions ? `<div style="font-size:8pt; color:#000000; margin-bottom:8mm; padding-top:4mm; border-top:0.2mm solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
-
-    <div style="margin-top:auto; font-size:7.5pt; color:#000000; border-top:0.2mm solid #dddddd; padding-top:4mm; text-align:center;">
-      <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
-    </div>
-  `);
-}
-
-// Captura o container em dimensões A4 reais e fatia em páginas A4
-async function captureA4Canvas(htmlContent) {
-  // Wrapper fora da viewport — sem opacity/z-index negativo
+async function renderA4PageToCanvas(pageHTML) {
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
   wrapper.style.top = '0';
@@ -866,15 +821,15 @@ async function captureA4Canvas(htmlContent) {
 
   const container = document.createElement('div');
   container.style.width = `${A4_W_PX}px`;
+  container.style.height = `${A4_H_PX}px`;
   container.style.background = '#ffffff';
   container.style.color = '#000000';
   container.style.fontFamily = "'Inter', Arial, sans-serif";
-  container.innerHTML = htmlContent;
+  container.innerHTML = pageHTML;
 
   wrapper.appendChild(container);
   document.body.appendChild(wrapper);
 
-  // Aguarda imagens
   const imgs = Array.from(container.querySelectorAll('img'));
   await Promise.all(imgs.map(img => {
     if (img.complete && img.naturalWidth > 0) return Promise.resolve();
@@ -885,22 +840,18 @@ async function captureA4Canvas(htmlContent) {
     });
   }));
 
-  // Aguarda 2 frames
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   void container.offsetHeight;
 
-  // Altura real do conteúdo (mínimo A4)
-  const realHeight = Math.max(container.scrollHeight, container.offsetHeight, A4_H_PX);
-
   const canvas = await html2canvas(container, {
-    scale: 3,                       // ~288 dpi efetivo
+    scale: 3,
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
     width: A4_W_PX,
-    height: realHeight,
+    height: A4_H_PX,
     windowWidth: A4_W_PX,
-    windowHeight: realHeight,
+    windowHeight: A4_H_PX,
     scrollX: 0,
     scrollY: 0,
     logging: false,
@@ -915,38 +866,222 @@ async function captureA4Canvas(htmlContent) {
   });
 
   wrapper.remove();
-  return { canvas, realHeight };
+  return canvas;
 }
 
-// Fatia o canvas em páginas de exatamente 297mm (A4_H_PX * scale)
-function sliceCanvasToA4Pages(canvas) {
+async function paginateCutPlan(c, s) {
+  const unitLabel = (c.unit || 'cm').toUpperCase();
+  const dataObj = new Date(c.created_at);
+  const dia = dataObj.getDate().toString().padStart(2, '0');
+  const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
+  const numCurto = c.number.split('-').pop();
+
+  const headerHTML = pdfHeaderBlock(s);
+  const titleHTML = pdfDocTitleBlock(s, 'Plano de Corte', dataFormatada, numCurto);
+  const metaHTML = pdfMetaBlock(`
+    <div>
+      <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
+      <div style="margin-top:1mm;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
+    </div>
+    <div style="font-weight:700; border:0.3mm solid #000; padding:1mm 2.5mm; border-radius:1mm;">Medidas em ${unitLabel}</div>
+  `);
+  const theadHTML = pdfTableHeadCutPlan(unitLabel);
+  const footerHTML = pdfFooterBlock(s);
+
+  const hHeader = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${headerHTML}</div>`);
+  const hTitle = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${titleHTML}</div>`);
+  const hMeta = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${metaHTML}</div>`);
+  const hThead = await measureBlockHeight(`<table style="width:100%; border-collapse:collapse;"><thead>${theadHTML.replace(/<\/?thead>/g, '')}</thead></table>`);
+  const hFooter = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${footerHTML}</div>`);
+
+  const alturaPaginaUtil = A4_H_PX - A4_PAD_TOP_PX - A4_PAD_BOT_PX;
+  const alturaFixosP1 = hHeader + hTitle + hMeta + hThead + hFooter + 8;
+  const alturaFixosPn = hHeader + hTitle + hMeta + hThead + hFooter + 8;
+
+  const espacoP1 = alturaPaginaUtil - alturaFixosP1;
+  const espacoPn = alturaPaginaUtil - alturaFixosPn;
+
+  const rowHeights = [];
+  for (let i = 0; i < c.items.length; i++) {
+    const rowHTML = `
+      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6; page-break-inside:avoid;">
+        <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${i + 1}</td>
+        <td style="text-align:center; padding:3mm 1mm;">${c.items[i].qty || 1}</td>
+        <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${c.items[i].height}</td>
+        <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${c.items[i].width}</td>
+        <td style="text-align:center; padding:3mm 1mm;">${buildFitaPDF(c.items[i])}</td>
+      </tr>`;
+    const h = await measureBlockHeight(`<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><tbody>${rowHTML}</tbody></table>`);
+    rowHeights.push(h);
+  }
+
   const pages = [];
-  const pageHeightPx = A4_H_PX * 3; // scale = 3
-  const pageWidthPx = A4_W_PX * 3;
+  let currentRows = [];
+  let currentHeight = 0;
+  let isFirstPage = true;
 
-  if (canvas.height <= pageHeightPx) {
-    pages.push(canvas);
-    return pages;
+  for (let i = 0; i < c.items.length; i++) {
+    const limit = isFirstPage ? espacoP1 : espacoPn;
+    if (currentHeight + rowHeights[i] > limit && currentRows.length > 0) {
+      pages.push(currentRows);
+      currentRows = [];
+      currentHeight = 0;
+      isFirstPage = false;
+    }
+    currentRows.push(i);
+    currentHeight += rowHeights[i];
+  }
+  if (currentRows.length > 0) pages.push(currentRows);
+
+  return { pages, dataFormatada, numCurto, unitLabel, headerHTML, titleHTML, metaHTML, theadHTML, footerHTML };
+}
+
+async function buildCutPlanPDF(c) {
+  const s = getCompanyInfo();
+  const pag = await paginateCutPlan(c, s);
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+
+  for (let p = 0; p < pag.pages.length; p++) {
+    const rowsIdx = pag.pages[p];
+    const tbody = rowsIdx.map(i => `
+      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6;">
+        <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${i + 1}</td>
+        <td style="text-align:center; padding:3mm 1mm;">${c.items[i].qty || 1}</td>
+        <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${c.items[i].height}</td>
+        <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${c.items[i].width}</td>
+        <td style="text-align:center; padding:3mm 1mm;">${buildFitaPDF(c.items[i])}</td>
+      </tr>`).join('');
+
+    const bodyHTML = `
+      <table style="width:100%; border-collapse:collapse; font-size:9pt; table-layout:fixed;">
+        ${pag.theadHTML}
+        <tbody>${tbody}</tbody>
+      </table>`;
+
+    const pageHTML = buildA4Page(
+      pag.headerHTML,
+      pag.titleHTML + pag.metaHTML + bodyHTML,
+      pag.footerHTML
+    );
+
+    const canvas = await renderA4PageToCanvas(pageHTML);
+
+    if (p > 0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
   }
 
-  let y = 0;
-  while (y < canvas.height) {
-    const sliceH = Math.min(pageHeightPx, canvas.height - y);
-    const slice = document.createElement('canvas');
-    slice.width = canvas.width;
-    slice.height = sliceH;
-    const ctx = slice.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, slice.width, slice.height);
-    ctx.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-    pages.push(slice);
-    y += sliceH;
+  return pdf.output('blob');
+}
+
+async function buildBudgetPDF(b) {
+  const s = getCompanyInfo();
+  const dataObj = new Date(b.created_at);
+  const dia = dataObj.getDate().toString().padStart(2, '0');
+  const mesAno = dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
+  const numCurto = b.number.split('-').pop();
+  const conditions = (b.conditions || s.default_conditions || '').trim();
+
+  const headerHTML = pdfHeaderBlock(s);
+  const titleHTML = pdfDocTitleBlock(s, 'Orçamento', dataFormatada, numCurto);
+  const metaHTML = pdfMetaBlock(`<div><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>`);
+  const theadHTML = pdfTableHeadBudget();
+  const footerHTML = pdfFooterBlock(s);
+
+  const hHeader = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${headerHTML}</div>`);
+  const hTitle = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${titleHTML}</div>`);
+  const hMeta = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${metaHTML}</div>`);
+  const hThead = await measureBlockHeight(`<table style="width:100%; border-collapse:collapse;"><thead>${theadHTML.replace(/<\/?thead>/g, '')}</thead></table>`);
+  const hFooter = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${footerHTML}</div>`);
+
+  const alturaPaginaUtil = A4_H_PX - A4_PAD_TOP_PX - A4_PAD_BOT_PX;
+  const alturaFixosP1 = hHeader + hTitle + hMeta + hThead + hFooter + 8;
+  const espacoP1 = alturaPaginaUtil - alturaFixosP1;
+  const espacoPn = espacoP1;
+
+  const rowHeights = [];
+  for (let i = 0; i < b.items.length; i++) {
+    const rowHTML = `
+      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6;">
+        <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${i + 1}</td>
+        <td style="padding:3mm 1mm; font-weight:500; word-break:break-word;">${escapeHtml(b.items[i].name)}</td>
+        <td style="text-align:center; padding:3mm 1mm;">${b.items[i].qty}</td>
+        <td style="text-align:right; padding:3mm 1mm; white-space:nowrap;">${formatCurrency(b.items[i].price)}</td>
+        <td style="text-align:right; padding:3mm 1mm; font-weight:700; white-space:nowrap;">${formatCurrency(b.items[i].price * b.items[i].qty)}</td>
+      </tr>`;
+    const h = await measureBlockHeight(`<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><tbody>${rowHTML}</tbody></table>`);
+    rowHeights.push(h);
   }
-  return pages;
+
+  const totalHTML = `<div style="display:flex; justify-content:flex-end; margin-top:4mm;"><div style="background:#000000; color:#ffffff; padding:3mm 6mm; font-size:11pt; font-weight:600; border-radius:1mm;">${formatCurrency(b.total)}</div></div>`;
+  const hTotal = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${totalHTML}</div>`);
+  const conditionsHTML = conditions ? `<div style="font-size:8pt; color:#000000; margin-top:4mm; padding-top:4mm; border-top:0.2mm solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : '';
+  const hConditions = conditionsHTML ? await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${conditionsHTML}</div>`) : 0;
+
+  const pages = [];
+  let currentRows = [];
+  let currentHeight = 0;
+  let isFirstPage = true;
+
+  for (let i = 0; i < b.items.length; i++) {
+    const limit = isFirstPage ? espacoP1 : espacoPn;
+    if (currentHeight + rowHeights[i] > limit && currentRows.length > 0) {
+      pages.push(currentRows);
+      currentRows = [];
+      currentHeight = 0;
+      isFirstPage = false;
+    }
+    currentRows.push(i);
+    currentHeight += rowHeights[i];
+  }
+  if (currentRows.length > 0) pages.push(currentRows);
+
+  const extraFinal = hTotal + hConditions + 4;
+  while (pages.length > 0) {
+    const last = pages[pages.length - 1];
+    const usedInLast = last.reduce((sum, idx) => sum + rowHeights[idx], 0);
+    if (usedInLast + extraFinal <= espacoPn) break;
+    if (last.length <= 1) break;
+    const moved = last.pop();
+    pages.push([moved]);
+  }
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+
+  for (let p = 0; p < pages.length; p++) {
+    const rowsIdx = pages[p];
+    const isLast = p === pages.length - 1;
+    const tbody = rowsIdx.map(i => `
+      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6;">
+        <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${i + 1}</td>
+        <td style="padding:3mm 1mm; font-weight:500; word-break:break-word;">${escapeHtml(b.items[i].name)}</td>
+        <td style="text-align:center; padding:3mm 1mm;">${b.items[i].qty}</td>
+        <td style="text-align:right; padding:3mm 1mm; white-space:nowrap;">${formatCurrency(b.items[i].price)}</td>
+        <td style="text-align:right; padding:3mm 1mm; font-weight:700; white-space:nowrap;">${formatCurrency(b.items[i].price * b.items[i].qty)}</td>
+      </tr>`).join('');
+
+    const bodyHTML = `
+      <table style="width:100%; border-collapse:collapse; font-size:9pt; table-layout:fixed;">
+        ${theadHTML}
+        <tbody>${tbody}</tbody>
+      </table>
+      ${isLast ? totalHTML + conditionsHTML : ''}`;
+
+    const pageHTML = buildA4Page(headerHTML, titleHTML + metaHTML + bodyHTML, footerHTML);
+    const canvas = await renderA4PageToCanvas(pageHTML);
+
+    if (p > 0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
+  }
+
+  return pdf.output('blob');
 }
 
 async function generatePDFBlob(type, id) {
-  // 1) Fontes
   try {
     await document.fonts.load('400 14px Inter');
     await document.fonts.load('500 14px Inter');
@@ -956,58 +1091,16 @@ async function generatePDFBlob(type, id) {
     await document.fonts.ready;
   } catch (_) {}
 
-  // 2) HTML
-  let htmlContent = '';
   if (type === 'budget') {
     const b = window.db.budgets.find(x => x.id === id);
     if (!b) throw new Error('Orçamento não encontrado.');
-    htmlContent = buildBudgetHTML(b);
+    return buildBudgetPDF(b);
   } else if (type === 'cut') {
     const c = window.db.cuttingPlans.find(x => x.id === id);
     if (!c) throw new Error('Plano de Corte não encontrado.');
-    htmlContent = buildCutPlanHTML(c);
+    return buildCutPlanPDF(c);
   }
-
-  // 3) Captura
-  const { canvas } = await captureA4Canvas(htmlContent);
-
-  // 4) Sanity check multi-faixa
-  const ctx = canvas.getContext('2d');
-  const stepY = Math.max(1, Math.floor(canvas.height / 20));
-  let nonWhite = 0;
-  for (let yy = 0; yy < canvas.height; yy += stepY) {
-    const bandH = Math.min(80, canvas.height - yy);
-    if (bandH <= 0) break;
-    const data = ctx.getImageData(0, yy, canvas.width, bandH).data;
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) nonWhite++;
-    }
-    if (nonWhite > 300) break;
-  }
-  if (nonWhite < 10) throw new Error('Canvas vazio — captura falhou.');
-
-  // 5) Fatia em A4 reais
-  const pageCanvases = sliceCanvasToA4Pages(canvas);
-
-  // 6) Monta PDF A4 real
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
-
-  pageCanvases.forEach((pageCanvas, idx) => {
-    if (idx > 0) pdf.addPage();
-    const imgWmm = A4_W_MM;
-    const imgHmm = (pageCanvas.height / pageCanvas.width) * A4_W_MM;
-    pdf.addImage(
-      pageCanvas.toDataURL('image/jpeg', 0.95),
-      'JPEG',
-      0,
-      0,
-      imgWmm,
-      Math.min(imgHmm, A4_H_MM)
-    );
-  });
-
-  return pdf.output('blob');
+  throw new Error('Tipo inválido.');
 }
 
 async function downloadPDF(type, id) {
