@@ -665,8 +665,14 @@ function refreshCart() {
 }
 
 // ============================================================
-// GERADOR DE PDF — VERSÃO CORRIGIDA (PDF EM BRANCO RESOLVIDO)
+// GERADOR DE PDF — A4 REAL (210mm × 297mm)
 // ============================================================
+const A4_W_MM = 210;
+const A4_H_MM = 297;
+// 96 dpi CSS: 210mm = 793.7px, 297mm = 1122.5px
+const A4_W_PX = Math.round((A4_W_MM / 25.4) * 96); // ≈794
+const A4_H_PX = Math.round((A4_H_MM / 25.4) * 96); // ≈1123
+
 function getCompanyInfo() {
   const s = window.db.settings || {};
   return {
@@ -684,24 +690,32 @@ function getCompanyInfo() {
 
 function buildFitaPDF(i) {
   const bar = {
-    left:   'top:-3px; bottom:-3px; left:-6px; width:5px;',
-    right:  'top:-3px; bottom:-3px; right:-6px; width:5px;',
-    bottom: 'left:-3px; right:-3px; bottom:-6px; height:5px;',
-    top:    'left:-3px; right:-3px; top:-6px; height:5px;'
+    left:   'top:-2mm; bottom:-2mm; left:-3mm; width:2mm;',
+    right:  'top:-2mm; bottom:-2mm; right:-3mm; width:2mm;',
+    bottom: 'left:-2mm; right:-2mm; bottom:-3mm; height:2mm;',
+    top:    'left:-2mm; right:-2mm; top:-3mm; height:2mm;'
   };
   const box = (label, edge) => `
-    <div style="display:inline-block; position:relative; width:26px; height:26px; box-sizing:border-box; border:2px dashed #555; margin:0 6px; vertical-align:middle; text-align:center; line-height:22px; font-size:10px; font-weight:800; color:#000; font-family:Inter, Arial, sans-serif;">
+    <div style="display:inline-block; position:relative; width:9mm; height:9mm; box-sizing:border-box; border:0.5mm dashed #555; margin:0 2mm; vertical-align:middle; text-align:center; line-height:8mm; font-size:7pt; font-weight:800; color:#000; font-family:Inter, Arial, sans-serif;">
       ${label}
       ${i[edge] ? `<div style="position:absolute; ${bar[edge]} background:#e53935;"></div>` : ''}
     </div>`;
   return box('A1', 'left') + box('A2', 'right') + box('L1', 'bottom') + box('L2', 'top');
 }
 
+// Corpo padrão A4 — todo em mm/pt, preenche 297mm com flex
+function buildA4Wrapper(innerHTML) {
+  return `
+    <div style="width:${A4_W_MM}mm; min-height:${A4_H_MM}mm; box-sizing:border-box; padding:15mm 15mm 12mm 15mm; background:#ffffff; color:#000000; font-family:'Inter', Arial, sans-serif; font-size:10pt; line-height:1.4; display:flex; flex-direction:column; overflow:hidden;">
+      ${innerHTML}
+    </div>`;
+}
+
 function buildCutPlanHTML(c) {
   const s = getCompanyInfo();
   const logoSVG = s.logo
-    ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">`
-    : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+    ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:12mm; max-width:40mm; object-fit:contain;">`
+    : `<div style="background:#000000; color:#ffffff; padding:2mm 4mm; font-size:9pt; font-weight:700; letter-spacing:1mm; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
   const dataObj = new Date(c.created_at);
@@ -712,64 +726,69 @@ function buildCutPlanHTML(c) {
   const handle = s.company_name.replace(/\s+/g, '');
   const unitLabel = (c.unit || 'cm').toUpperCase();
 
-  return `
-    <div style="width:800px; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000; overflow:hidden;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
-        <div>${logoSVG}</div>
-        <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
+  return buildA4Wrapper(`
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12mm;">
+      <div>${logoSVG}</div>
+      <div style="font-size:8pt; font-weight:700; color:#000000; letter-spacing:0.5mm; text-transform:uppercase;">@${escapeHtml(handle)}</div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10mm;">
+      <h1 style="font-size:26pt; font-weight:800; color:#000000; margin:0; letter-spacing:-0.5mm; line-height:1;">Plano de Corte</h1>
+      <div style="font-size:11pt; font-weight:600; color:#000000;">${dataFormatada}</div>
+    </div>
+
+    <div style="margin-bottom:5mm; font-size:13pt; font-weight:700;">${escapeHtml(c.name || 'Sem nome')}</div>
+
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8mm;">
+      <div style="font-size:9pt; color:#000000; line-height:1.5;">
+        ${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
       </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:50px;">
-        <h1 style="font-size:48px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Plano de Corte</h1>
-        <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
+      <div style="font-size:14pt; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
+    </div>
+
+    <div style="margin-bottom:6mm; font-size:9.5pt; display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
+        <div style="margin-top:1mm;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
       </div>
-      <div style="margin-bottom:20px; font-size:22px; font-weight:700;">${escapeHtml(c.name || 'Sem nome')}</div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
-        <div style="font-size:14px; color:#000000; line-height:1.6;">
-          ${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}
-        </div>
-        <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
-      </div>
-      <div style="margin-bottom:30px; font-size:14px; display:flex; justify-content:space-between; align-items:flex-start;">
-        <div>
-          <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
-          <div style="margin-top:0.3rem;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
-        </div>
-        <div style="font-weight:700; border:1px solid #000; padding:2px 8px; border-radius:4px;">Medidas em ${unitLabel}</div>
-      </div>
-      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px; table-layout:fixed;">
-        <thead>
-          <tr style="background:#000000; color:#ffffff;">
-            <th style="text-align:center; padding:10px; width:50px; border-radius:4px 0 0 4px;">Peça</th>
-            <th style="text-align:center; padding:10px; width:60px;">Qtd</th>
-            <th style="text-align:center; padding:10px; width:100px;">Alt (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:100px;">Larg (${unitLabel})</th>
-            <th style="text-align:center; padding:10px; width:190px; border-radius:0 4px 4px 0;">Fita</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${c.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
-              <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
-              <td style="text-align:center; padding:12px 10px;">${i.qty || 1}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.height}</td>
-              <td style="text-align:center; padding:12px 10px; white-space:nowrap;">${i.width}</td>
-              <td style="text-align:center; padding:12px 10px;">
-                ${buildFitaPDF(i)}
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
-        <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
-      </div>
-    </div>`;
+      <div style="font-weight:700; border:0.3mm solid #000; padding:1mm 2.5mm; border-radius:1mm;">Medidas em ${unitLabel}</div>
+    </div>
+
+    <table style="width:100%; border-collapse:collapse; margin-bottom:4mm; font-size:9pt; table-layout:fixed;">
+      <thead>
+        <tr style="background:#000000; color:#ffffff;">
+          <th style="text-align:center; padding:2.5mm 1mm; width:12mm; border-radius:1mm 0 0 1mm;">Peça</th>
+          <th style="text-align:center; padding:2.5mm 1mm; width:15mm;">Qtd</th>
+          <th style="text-align:center; padding:2.5mm 1mm; width:25mm;">Alt (${unitLabel})</th>
+          <th style="text-align:center; padding:2.5mm 1mm; width:25mm;">Larg (${unitLabel})</th>
+          <th style="text-align:center; padding:2.5mm 1mm; width:55mm; border-radius:0 1mm 1mm 0;">Fita</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${c.items.map((i, idx) => `
+          <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6; page-break-inside:avoid;">
+            <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${idx + 1}</td>
+            <td style="text-align:center; padding:3mm 1mm;">${i.qty || 1}</td>
+            <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${i.height}</td>
+            <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${i.width}</td>
+            <td style="text-align:center; padding:3mm 1mm;">
+              ${buildFitaPDF(i)}
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div style="margin-top:auto; font-size:7.5pt; color:#000000; border-top:0.2mm solid #dddddd; padding-top:4mm; text-align:center;">
+      <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
+    </div>
+  `);
 }
 
 function buildBudgetHTML(b) {
   const s = getCompanyInfo();
   const logoSVG = s.logo
-    ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:36px; max-width:140px; object-fit:contain;">`
-    : `<div style="background:#000000; color:#ffffff; padding:8px 16px; font-size:12px; font-weight:700; letter-spacing:4px; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+    ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:12mm; max-width:40mm; object-fit:contain;">`
+    : `<div style="background:#000000; color:#ffffff; padding:2mm 4mm; font-size:9pt; font-weight:700; letter-spacing:1mm; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
   const wa1 = s.whatsapp ? formatWA(s.whatsapp) : '';
   const wa2 = s.whatsapp2 ? formatWA(s.whatsapp2) : '';
   const conditions = (b.conditions || s.default_conditions || '').trim();
@@ -780,296 +799,221 @@ function buildBudgetHTML(b) {
   const numCurto = b.number.split('-').pop();
   const handle = s.company_name.replace(/\s+/g, '');
 
-  return `
-    <div style="width:800px; font-family:'Inter', Arial, sans-serif; background:#ffffff; padding:60px; box-sizing:border-box; display:flex; flex-direction:column; color:#000000; overflow:hidden;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:60px;">
-        <div>${logoSVG}</div>
-        <div style="font-size:12px; font-weight:700; color:#000000; letter-spacing:2px; text-transform:uppercase;">@${escapeHtml(handle)}</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:50px;">
-        <h1 style="font-size:48px; font-weight:800; color:#000000; margin:0; letter-spacing:-1.5px; line-height:1;">Orçamento</h1>
-        <div style="font-size:20px; font-weight:600; color:#000000; letter-spacing:-0.5px;">${dataFormatada}</div>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px;">
-        <div style="font-size:14px; color:#000000; line-height:1.6;">${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
-        <div style="font-size:28px; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
-      </div>
-      <div style="margin-bottom:30px; font-size:14px;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>
-      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:13px; table-layout:fixed;">
-        <thead>
-          <tr style="background:#000000; color:#ffffff;">
-            <th style="text-align:center; padding:10px; width:40px; border-radius:4px 0 0 4px;">Nº</th>
-            <th style="text-align:left; padding:10px;">Material</th>
-            <th style="text-align:center; padding:10px; width:50px;">Qtd</th>
-            <th style="text-align:right; padding:10px; width:100px;">Preço</th>
-            <th style="text-align:right; padding:10px; width:100px; border-radius:0 4px 4px 0;">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${b.items.map((i, idx) => `
-            <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:1px solid #eef2f6;">
-              <td style="text-align:center; padding:12px 10px; font-weight:600;">${idx + 1}</td>
-              <td style="padding:12px 10px; font-weight:500; word-break:break-word;">${escapeHtml(i.name)}</td>
-              <td style="text-align:center; padding:12px 10px;">${i.qty}</td>
-              <td style="text-align:right; padding:12px 10px; white-space:nowrap;">${formatCurrency(i.price)}</td>
-              <td style="text-align:right; padding:12px 10px; font-weight:700; white-space:nowrap;">${formatCurrency(i.price * i.qty)}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-      <div style="display:flex; justify-content:flex-end; margin-bottom:60px;">
-        <div style="background:#000000; color:#ffffff; padding:12px 24px; font-size:16px; font-weight:600; border-radius:4px;">${formatCurrency(b.total)}</div>
-      </div>
-      ${conditions ? `<div style="font-size:12px; color:#000000; margin-bottom:40px; padding-top:20px; border-top:1px solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
-      <div style="margin-top:auto; font-size:11px; color:#000000; border-top:1px solid #dddddd; padding-top:20px; text-align:center;">
-        <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
-      </div>
-    </div>`;
+  return buildA4Wrapper(`
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12mm;">
+      <div>${logoSVG}</div>
+      <div style="font-size:8pt; font-weight:700; color:#000000; letter-spacing:0.5mm; text-transform:uppercase;">@${escapeHtml(handle)}</div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10mm;">
+      <h1 style="font-size:26pt; font-weight:800; color:#000000; margin:0; letter-spacing:-0.5mm; line-height:1;">Orçamento</h1>
+      <div style="font-size:11pt; font-weight:600; color:#000000;">${dataFormatada}</div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8mm;">
+      <div style="font-size:9pt; color:#000000; line-height:1.5;">${escapeHtml(s.email)}<br>${escapeHtml(s.address)}<br>${wa1 ? `WhatsApp: ${wa1}` : ''} ${wa2 ? ` | ${wa2}` : ''}</div>
+      <div style="font-size:14pt; font-weight:300; color:#000000;">nº <strong style="font-weight:700;">${numCurto}</strong></div>
+    </div>
+
+    <div style="margin-bottom:6mm; font-size:9.5pt;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>
+
+    <table style="width:100%; border-collapse:collapse; margin-bottom:4mm; font-size:9pt; table-layout:fixed;">
+      <thead>
+        <tr style="background:#000000; color:#ffffff;">
+          <th style="text-align:center; padding:2.5mm 1mm; width:10mm; border-radius:1mm 0 0 1mm;">Nº</th>
+          <th style="text-align:left; padding:2.5mm 1mm;">Material</th>
+          <th style="text-align:center; padding:2.5mm 1mm; width:13mm;">Qtd</th>
+          <th style="text-align:right; padding:2.5mm 1mm; width:25mm;">Preço</th>
+          <th style="text-align:right; padding:2.5mm 1mm; width:25mm; border-radius:0 1mm 1mm 0;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${b.items.map((i, idx) => `
+          <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6; page-break-inside:avoid;">
+            <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${idx + 1}</td>
+            <td style="padding:3mm 1mm; font-weight:500; word-break:break-word;">${escapeHtml(i.name)}</td>
+            <td style="text-align:center; padding:3mm 1mm;">${i.qty}</td>
+            <td style="text-align:right; padding:3mm 1mm; white-space:nowrap;">${formatCurrency(i.price)}</td>
+            <td style="text-align:right; padding:3mm 1mm; font-weight:700; white-space:nowrap;">${formatCurrency(i.price * i.qty)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom:10mm;">
+      <div style="background:#000000; color:#ffffff; padding:3mm 6mm; font-size:11pt; font-weight:600; border-radius:1mm;">${formatCurrency(b.total)}</div>
+    </div>
+
+    ${conditions ? `<div style="font-size:8pt; color:#000000; margin-bottom:8mm; padding-top:4mm; border-top:0.2mm solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : ''}
+
+    <div style="margin-top:auto; font-size:7.5pt; color:#000000; border-top:0.2mm solid #dddddd; padding-top:4mm; text-align:center;">
+      <strong>${escapeHtml(s.company_name)}</strong> · CNPJ: ${escapeHtml(s.cnpj)} · ${escapeHtml(s.address)}
+    </div>
+  `);
 }
 
-function generatePDFFallback(htmlContent, resolve, reject) {
-  try {
-    const temp = document.createElement('div');
-    temp.style.position = 'fixed';
-    temp.style.top = '0';
-    temp.style.left = '0';
-    temp.style.width = '800px';
-    temp.style.background = '#ffffff';
-    temp.style.zIndex = '9999';
-    temp.innerHTML = htmlContent;
-    document.body.appendChild(temp);
+// Captura o container em dimensões A4 reais e fatia em páginas A4
+async function captureA4Canvas(htmlContent) {
+  // Wrapper fora da viewport — sem opacity/z-index negativo
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'fixed';
+  wrapper.style.top = '0';
+  wrapper.style.left = '0';
+  wrapper.style.transform = 'translateX(-300vw)';
+  wrapper.style.width = `${A4_W_PX}px`;
+  wrapper.style.background = '#ffffff';
+  wrapper.style.pointerEvents = 'none';
+  wrapper.style.zIndex = '1';
 
-    const run = async () => {
-      try {
-        const canvas = await html2canvas(temp, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          width: 800,
-          windowWidth: 800,
-          scrollX: 0,
-          scrollY: 0,
-          logging: false,
-          onclone: (doc, el) => {
-            el.style.position = 'static';
-            el.style.top = 'auto';
-            el.style.left = 'auto';
-            el.style.transform = 'none';
-            el.style.opacity = '1';
-            el.style.visibility = 'visible';
-            el.style.display = 'block';
-            el.style.background = '#ffffff';
-          }
-        });
+  const container = document.createElement('div');
+  container.style.width = `${A4_W_PX}px`;
+  container.style.background = '#ffffff';
+  container.style.color = '#000000';
+  container.style.fontFamily = "'Inter', Arial, sans-serif";
+  container.innerHTML = htmlContent;
 
-        if (!canvas || canvas.width === 0 || canvas.height === 0) {
-          throw new Error('Canvas vazio no fallback.');
-        }
+  wrapper.appendChild(container);
+  document.body.appendChild(wrapper);
 
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageW = 210;
-        const pageH = 297;
-        const imgW = pageW;
-        const pxPerMm = canvas.width / pageW;
-        const pagePxH = Math.floor(pageH * pxPerMm);
+  // Aguarda imagens
+  const imgs = Array.from(container.querySelectorAll('img'));
+  await Promise.all(imgs.map(img => {
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return new Promise(res => {
+      img.onload = res;
+      img.onerror = res;
+      setTimeout(res, 3000);
+    });
+  }));
 
-        if (canvas.height <= pagePxH) {
-          const imgH = (canvas.height * imgW) / canvas.width;
-          pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgH);
-        } else {
-          let yPx = 0;
-          let pageIndex = 0;
-          while (yPx < canvas.height) {
-            const sliceH = Math.min(pagePxH, canvas.height - yPx);
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = canvas.width;
-            sliceCanvas.height = sliceH;
-            const sctx = sliceCanvas.getContext('2d');
-            sctx.fillStyle = '#ffffff';
-            sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-            sctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-            const sliceImgH = (sliceH * imgW) / canvas.width;
-            if (pageIndex > 0) pdf.addPage();
-            pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
-            yPx += sliceH;
-            pageIndex++;
-          }
-        }
+  // Aguarda 2 frames
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  void container.offsetHeight;
 
-        temp.remove();
-        resolve(pdf.output('blob'));
-      } catch (e) {
-        temp.remove();
-        reject(e);
-      }
-    };
+  // Altura real do conteúdo (mínimo A4)
+  const realHeight = Math.max(container.scrollHeight, container.offsetHeight, A4_H_PX);
 
-    run();
-  } catch (e) {
-    reject(e);
-  }
-}
-
-function generatePDFBlob(type, id) {
-  return new Promise(async (resolve, reject) => {
-    let htmlContent = '';
-    if (type === 'budget') {
-      const b = window.db.budgets.find(x => x.id === id);
-      if (!b) return reject(new Error('Orçamento não encontrado.'));
-      htmlContent = buildBudgetHTML(b);
-    } else if (type === 'cut') {
-      const c = window.db.cuttingPlans.find(x => x.id === id);
-      if (!c) return reject(new Error('Plano de Corte não encontrado.'));
-      htmlContent = buildCutPlanHTML(c);
-    }
-
-    // 1) Garante que a fonte Inter esteja carregada
-    try {
-      await document.fonts.load('400 14px Inter');
-      await document.fonts.load('500 14px Inter');
-      await document.fonts.load('600 14px Inter');
-      await document.fonts.load('700 14px Inter');
-      await document.fonts.load('800 14px Inter');
-      await document.fonts.ready;
-    } catch (_) { /* ignora */ }
-
-    // 2) Wrapper visível, fora da viewport (sem opacity:0 / z-index negativo)
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'fixed';
-    wrapper.style.top = '0';
-    wrapper.style.left = '0';
-    wrapper.style.transform = 'translateX(-200vw)';
-    wrapper.style.width = '800px';
-    wrapper.style.height = 'auto';
-    wrapper.style.zIndex = '1';
-    wrapper.style.background = '#ffffff';
-    wrapper.style.pointerEvents = 'none';
-    wrapper.style.overflow = 'visible';
-
-    const container = document.createElement('div');
-    container.style.width = '800px';
-    container.style.background = '#ffffff';
-    container.style.color = '#000000';
-    container.innerHTML = htmlContent;
-
-    wrapper.appendChild(container);
-    document.body.appendChild(wrapper);
-
-    // 3) Aguarda imagens (logo) carregarem
-    const imgs = Array.from(container.querySelectorAll('img'));
-    await Promise.all(imgs.map(img => {
-      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-      return new Promise(res => {
-        img.onload = res;
-        img.onerror = res;
-        setTimeout(res, 3000);
-      });
-    }));
-
-    // 4) Aguarda 2 frames de renderização
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    // 5) Força reflow e mede altura real
-    void container.offsetHeight;
-    const realHeight = Math.max(container.scrollHeight, container.offsetHeight, 1120);
-
-    try {
-      // 6) Captura
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 800,
-        height: realHeight,
-        windowWidth: 800,
-        windowHeight: realHeight,
-        scrollX: 0,
-        scrollY: 0,
-        logging: false,
-        onclone: (clonedDoc, clonedEl) => {
-          clonedEl.style.position = 'static';
-          clonedEl.style.transform = 'none';
-          clonedEl.style.opacity = '1';
-          clonedEl.style.visibility = 'visible';
-          clonedEl.style.display = 'block';
-          clonedEl.style.background = '#ffffff';
-        }
-      });
-
-      // 7) Sanity check multi-faixa (não apenas topo)
-      if (!canvas || canvas.width === 0 || canvas.height === 0) {
-        throw new Error('Canvas vazio — html2canvas não renderizou.');
-      }
-      const ctx = canvas.getContext('2d');
-      const sampleStepY = Math.max(1, Math.floor(canvas.height / 20));
-      let nonWhite = 0;
-      for (let y = 0; y < canvas.height; y += sampleStepY) {
-        const bandH = Math.min(40, canvas.height - y);
-        if (bandH <= 0) break;
-        const data = ctx.getImageData(0, y, canvas.width, bandH).data;
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) nonWhite++;
-        }
-        if (nonWhite > 200) break;
-      }
-      if (nonWhite < 10) {
-        console.warn('[PDF] Canvas vazio detectado. Usando fallback nativo.');
-        wrapper.remove();
-        return generatePDFFallback(htmlContent, resolve, reject);
-      }
-
-      // 8) Monta PDF A4 paginado
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-
-      const pageW = 210;
-      const pageH = 297;
-      const imgW = pageW;
-
-      const pxPerMm = canvas.width / pageW;
-      const pagePxH = Math.floor(pageH * pxPerMm);
-
-      if (canvas.height <= pagePxH) {
-        const imgH = (canvas.height * imgW) / canvas.width;
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, imgH);
-      } else {
-        let yPx = 0;
-        let pageIndex = 0;
-        while (yPx < canvas.height) {
-          const sliceH = Math.min(pagePxH, canvas.height - yPx);
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sliceH;
-          const sctx = sliceCanvas.getContext('2d');
-          sctx.fillStyle = '#ffffff';
-          sctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          sctx.drawImage(canvas, 0, yPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-
-          const sliceImgH = (sliceH * imgW) / canvas.width;
-          if (pageIndex > 0) pdf.addPage();
-          pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgW, sliceImgH);
-
-          yPx += sliceH;
-          pageIndex++;
-        }
-      }
-
-      wrapper.remove();
-      resolve(pdf.output('blob'));
-    } catch (err) {
-      wrapper.remove();
-      console.error('[PDF] Erro:', err);
-      generatePDFFallback(htmlContent, resolve, reject);
+  const canvas = await html2canvas(container, {
+    scale: 3,                       // ~288 dpi efetivo
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    width: A4_W_PX,
+    height: realHeight,
+    windowWidth: A4_W_PX,
+    windowHeight: realHeight,
+    scrollX: 0,
+    scrollY: 0,
+    logging: false,
+    onclone: (clonedDoc, clonedEl) => {
+      clonedEl.style.position = 'static';
+      clonedEl.style.transform = 'none';
+      clonedEl.style.opacity = '1';
+      clonedEl.style.visibility = 'visible';
+      clonedEl.style.display = 'block';
+      clonedEl.style.background = '#ffffff';
     }
   });
+
+  wrapper.remove();
+  return { canvas, realHeight };
+}
+
+// Fatia o canvas em páginas de exatamente 297mm (A4_H_PX * scale)
+function sliceCanvasToA4Pages(canvas) {
+  const pages = [];
+  const pageHeightPx = A4_H_PX * 3; // scale = 3
+  const pageWidthPx = A4_W_PX * 3;
+
+  if (canvas.height <= pageHeightPx) {
+    pages.push(canvas);
+    return pages;
+  }
+
+  let y = 0;
+  while (y < canvas.height) {
+    const sliceH = Math.min(pageHeightPx, canvas.height - y);
+    const slice = document.createElement('canvas');
+    slice.width = canvas.width;
+    slice.height = sliceH;
+    const ctx = slice.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, slice.width, slice.height);
+    ctx.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+    pages.push(slice);
+    y += sliceH;
+  }
+  return pages;
+}
+
+async function generatePDFBlob(type, id) {
+  // 1) Fontes
+  try {
+    await document.fonts.load('400 14px Inter');
+    await document.fonts.load('500 14px Inter');
+    await document.fonts.load('600 14px Inter');
+    await document.fonts.load('700 14px Inter');
+    await document.fonts.load('800 14px Inter');
+    await document.fonts.ready;
+  } catch (_) {}
+
+  // 2) HTML
+  let htmlContent = '';
+  if (type === 'budget') {
+    const b = window.db.budgets.find(x => x.id === id);
+    if (!b) throw new Error('Orçamento não encontrado.');
+    htmlContent = buildBudgetHTML(b);
+  } else if (type === 'cut') {
+    const c = window.db.cuttingPlans.find(x => x.id === id);
+    if (!c) throw new Error('Plano de Corte não encontrado.');
+    htmlContent = buildCutPlanHTML(c);
+  }
+
+  // 3) Captura
+  const { canvas } = await captureA4Canvas(htmlContent);
+
+  // 4) Sanity check multi-faixa
+  const ctx = canvas.getContext('2d');
+  const stepY = Math.max(1, Math.floor(canvas.height / 20));
+  let nonWhite = 0;
+  for (let yy = 0; yy < canvas.height; yy += stepY) {
+    const bandH = Math.min(80, canvas.height - yy);
+    if (bandH <= 0) break;
+    const data = ctx.getImageData(0, yy, canvas.width, bandH).data;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) nonWhite++;
+    }
+    if (nonWhite > 300) break;
+  }
+  if (nonWhite < 10) throw new Error('Canvas vazio — captura falhou.');
+
+  // 5) Fatia em A4 reais
+  const pageCanvases = sliceCanvasToA4Pages(canvas);
+
+  // 6) Monta PDF A4 real
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+
+  pageCanvases.forEach((pageCanvas, idx) => {
+    if (idx > 0) pdf.addPage();
+    const imgWmm = A4_W_MM;
+    const imgHmm = (pageCanvas.height / pageCanvas.width) * A4_W_MM;
+    pdf.addImage(
+      pageCanvas.toDataURL('image/jpeg', 0.95),
+      'JPEG',
+      0,
+      0,
+      imgWmm,
+      Math.min(imgHmm, A4_H_MM)
+    );
+  });
+
+  return pdf.output('blob');
 }
 
 async function downloadPDF(type, id) {
   const loading = document.createElement('div');
   loading.className = 'pdf-loading';
-  loading.innerHTML = `<div class="spinner"></div><span>Gerando PDF...</span>`;
+  loading.innerHTML = `<div class="spinner"></div><span>Gerando PDF A4...</span>`;
   document.body.appendChild(loading);
 
   try {
@@ -1078,7 +1022,6 @@ async function downloadPDF(type, id) {
       ? window.db.budgets.find(x => x.id === id)
       : window.db.cuttingPlans.find(x => x.id === id);
     const nameToUse = type === 'budget' ? doc.number : (doc.name || doc.number);
-
     const safeName = String(nameToUse).replace(/[\\/:*?"<>|]/g, '_').trim();
     const fileName = `${type === 'budget' ? 'Orcamento' : 'PlanoCorte'}-${safeName}.pdf`;
 
@@ -1091,7 +1034,7 @@ async function downloadPDF(type, id) {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
 
-    showToast('PDF gerado com sucesso!', 'success');
+    showToast('PDF A4 gerado com sucesso!', 'success');
   } catch (err) {
     console.error('Erro em downloadPDF:', err);
     showToast('Erro ao gerar PDF.', 'error');
@@ -1103,7 +1046,7 @@ async function downloadPDF(type, id) {
 async function sharePDFWhatsApp(type, id) {
   const loading = document.createElement('div');
   loading.className = 'pdf-loading';
-  loading.innerHTML = `<div class="spinner"></div><span>Preparando PDF...</span>`;
+  loading.innerHTML = `<div class="spinner"></div><span>Preparando PDF A4...</span>`;
   document.body.appendChild(loading);
 
   try {
@@ -1125,18 +1068,13 @@ async function sharePDFWhatsApp(type, id) {
 
     const title = type === 'budget' ? 'orçamento' : 'plano de corte';
     const mensagem = `Olá! Segue em anexo o ${title} *${nameToUse}* da *${s.company_name}*.`;
-    const msgEncoded = encodeURIComponent(mensagem);
     const waURL = phone
-      ? `https://wa.me/${phone}?text=${msgEncoded}`
-      : `https://wa.me/?text=${msgEncoded}`;
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(mensagem)}`
+      : `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({
-          files: [file],
-          title: `${type === 'budget' ? 'Orçamento' : 'Plano de Corte'} ${nameToUse}`,
-          text: mensagem
-        });
+        await navigator.share({ files: [file], title: `${type === 'budget' ? 'Orçamento' : 'Plano de Corte'} ${nameToUse}`, text: mensagem });
         showToast('PDF compartilhado!', 'success');
         return;
       } catch (shareErr) {
@@ -1147,11 +1085,8 @@ async function sharePDFWhatsApp(type, id) {
     showToast('PDF baixado! Abrindo WhatsApp...', 'success');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     setTimeout(() => window.open(waURL, '_blank'), 800);
   } catch (err) {
