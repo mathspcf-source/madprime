@@ -716,6 +716,19 @@ function pdfHeaderBlock(s) {
     </div>`;
 }
 
+function pdfCompactHeaderBlock(s, docLabel, numCurto, dateStr) {
+  const logoSVG = s.logo
+    ? `<img src="${s.logo}" crossorigin="anonymous" style="max-height:8mm; max-width:28mm; object-fit:contain;">`
+    : `<div style="background:#000000; color:#ffffff; padding:1.5mm 3mm; font-size:8pt; font-weight:700; letter-spacing:1mm; text-transform:uppercase; display:inline-block;">${escapeHtml(s.company_name)}</div>`;
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5mm; padding-bottom:3mm; border-bottom:0.2mm solid #dddddd;">
+      <div>${logoSVG}</div>
+      <div style="font-size:9pt; color:#000000; text-align:right;">
+        <strong>${escapeHtml(docLabel)}</strong> nº ${numCurto} · ${escapeHtml(dateStr)}
+      </div>
+    </div>`;
+}
+
 function pdfFooterBlock(s) {
   return `
     <div style="font-size:7.5pt; color:#000000; border-top:0.2mm solid #dddddd; padding-top:4mm; text-align:center;">
@@ -743,15 +756,30 @@ function pdfMetaBlock(extra) {
   return `<div style="margin-bottom:6mm; font-size:9.5pt; display:flex; justify-content:space-between; align-items:flex-start;">${extra}</div>`;
 }
 
+function pdfCompactMetaBlockCut(c, unitLabel) {
+  return `
+    <div style="margin-bottom:4mm; font-size:9pt; display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div><strong>Cliente:</strong> ${escapeHtml(c.client_name)}</div>
+        <div style="margin-top:0.5mm;"><strong>Material:</strong> ${escapeHtml(c.material_padrao || '—')}</div>
+      </div>
+      <div style="font-weight:700; border:0.3mm solid #000; padding:0.5mm 2mm; border-radius:1mm;">Medidas em ${unitLabel}</div>
+    </div>`;
+}
+
+function pdfCompactMetaBlockBudget(b) {
+  return `<div style="margin-bottom:4mm; font-size:9pt;"><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>`;
+}
+
 function pdfTableHeadCutPlan(unitLabel) {
   return `
     <thead>
       <tr style="background:#000000; color:#ffffff;">
-        <th style="text-align:center; padding:2.5mm 1mm; width:12mm; border-radius:1mm 0 0 1mm;">Peça</th>
-        <th style="text-align:center; padding:2.5mm 1mm; width:15mm;">Qtd</th>
-        <th style="text-align:center; padding:2.5mm 1mm; width:25mm;">Alt (${unitLabel})</th>
-        <th style="text-align:center; padding:2.5mm 1mm; width:25mm;">Larg (${unitLabel})</th>
-        <th style="text-align:center; padding:2.5mm 1mm; width:55mm; border-radius:0 1mm 1mm 0;">Fita</th>
+        <th style="text-align:center; padding:2mm 1mm; width:12mm; border-radius:1mm 0 0 1mm;">Peça</th>
+        <th style="text-align:center; padding:2mm 1mm; width:15mm;">Qtd</th>
+        <th style="text-align:center; padding:2mm 1mm; width:25mm;">Alt (${unitLabel})</th>
+        <th style="text-align:center; padding:2mm 1mm; width:25mm;">Larg (${unitLabel})</th>
+        <th style="text-align:center; padding:2mm 1mm; width:55mm; border-radius:0 1mm 1mm 0;">Fita</th>
       </tr>
     </thead>`;
 }
@@ -760,11 +788,11 @@ function pdfTableHeadBudget() {
   return `
     <thead>
       <tr style="background:#000000; color:#ffffff;">
-        <th style="text-align:center; padding:2.5mm 1mm; width:10mm; border-radius:1mm 0 0 1mm;">Nº</th>
-        <th style="text-align:left; padding:2.5mm 1mm;">Material</th>
-        <th style="text-align:center; padding:2.5mm 1mm; width:13mm;">Qtd</th>
-        <th style="text-align:right; padding:2.5mm 1mm; width:25mm;">Preço</th>
-        <th style="text-align:right; padding:2.5mm 1mm; width:25mm; border-radius:0 1mm 1mm 0;">Total</th>
+        <th style="text-align:center; padding:2mm 1mm; width:10mm; border-radius:1mm 0 0 1mm;">Nº</th>
+        <th style="text-align:left; padding:2mm 1mm;">Material</th>
+        <th style="text-align:center; padding:2mm 1mm; width:13mm;">Qtd</th>
+        <th style="text-align:right; padding:2mm 1mm; width:25mm;">Preço</th>
+        <th style="text-align:right; padding:2mm 1mm; width:25mm; border-radius:0 1mm 1mm 0;">Total</th>
       </tr>
     </thead>`;
 }
@@ -877,6 +905,7 @@ async function paginateCutPlan(c, s) {
   const dataFormatada = `${dia} de ${mesAno.charAt(0).toUpperCase() + mesAno.slice(1)}`;
   const numCurto = c.number.split('-').pop();
 
+  // Página 1 — cabeçalho completo
   const headerHTML = pdfHeaderBlock(s);
   const titleHTML = pdfDocTitleBlock(s, 'Plano de Corte', dataFormatada, numCurto);
   const metaHTML = pdfMetaBlock(`
@@ -886,31 +915,36 @@ async function paginateCutPlan(c, s) {
     </div>
     <div style="font-weight:700; border:0.3mm solid #000; padding:1mm 2.5mm; border-radius:1mm;">Medidas em ${unitLabel}</div>
   `);
+
+  // Páginas 2+ — cabeçalho compacto
+  const compactHeaderHTML = pdfCompactHeaderBlock(s, 'Plano de Corte', numCurto, dataFormatada);
+  const compactMetaHTML = pdfCompactMetaBlockCut(c, unitLabel);
+
   const theadHTML = pdfTableHeadCutPlan(unitLabel);
   const footerHTML = pdfFooterBlock(s);
 
   const hHeader = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${headerHTML}</div>`);
   const hTitle = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${titleHTML}</div>`);
   const hMeta = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${metaHTML}</div>`);
+  const hCompactHeader = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${compactHeaderHTML}</div>`);
+  const hCompactMeta = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${compactMetaHTML}</div>`);
   const hThead = await measureBlockHeight(`<table style="width:100%; border-collapse:collapse;"><thead>${theadHTML.replace(/<\/?thead>/g, '')}</thead></table>`);
   const hFooter = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${footerHTML}</div>`);
 
   const alturaPaginaUtil = A4_H_PX - A4_PAD_TOP_PX - A4_PAD_BOT_PX;
-  const alturaFixosP1 = hHeader + hTitle + hMeta + hThead + hFooter + 8;
-  const alturaFixosPn = hHeader + hTitle + hMeta + hThead + hFooter + 8;
+  const espacoP1 = alturaPaginaUtil - (hHeader + hTitle + hMeta + hThead + hFooter + 8);
+  const espacoPn = alturaPaginaUtil - (hCompactHeader + hCompactMeta + hThead + hFooter + 8);
 
-  const espacoP1 = alturaPaginaUtil - alturaFixosP1;
-  const espacoPn = alturaPaginaUtil - alturaFixosPn;
-
+  // Mede cada linha com padding reduzido (2mm)
   const rowHeights = [];
   for (let i = 0; i < c.items.length; i++) {
     const rowHTML = `
-      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6; page-break-inside:avoid;">
-        <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${i + 1}</td>
-        <td style="text-align:center; padding:3mm 1mm;">${c.items[i].qty || 1}</td>
-        <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${c.items[i].height}</td>
-        <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${c.items[i].width}</td>
-        <td style="text-align:center; padding:3mm 1mm;">${buildFitaPDF(c.items[i])}</td>
+      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6;">
+        <td style="text-align:center; padding:2mm 1mm; font-weight:600;">${i + 1}</td>
+        <td style="text-align:center; padding:2mm 1mm;">${c.items[i].qty || 1}</td>
+        <td style="text-align:center; padding:2mm 1mm; white-space:nowrap;">${c.items[i].height}</td>
+        <td style="text-align:center; padding:2mm 1mm; white-space:nowrap;">${c.items[i].width}</td>
+        <td style="text-align:center; padding:2mm 1mm;">${buildFitaPDF(c.items[i])}</td>
       </tr>`;
     const h = await measureBlockHeight(`<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><tbody>${rowHTML}</tbody></table>`);
     rowHeights.push(h);
@@ -934,7 +968,12 @@ async function paginateCutPlan(c, s) {
   }
   if (currentRows.length > 0) pages.push(currentRows);
 
-  return { pages, dataFormatada, numCurto, unitLabel, headerHTML, titleHTML, metaHTML, theadHTML, footerHTML };
+  return {
+    pages,
+    headerHTML, titleHTML, metaHTML,
+    compactHeaderHTML, compactMetaHTML,
+    theadHTML, footerHTML
+  };
 }
 
 async function buildCutPlanPDF(c) {
@@ -946,13 +985,15 @@ async function buildCutPlanPDF(c) {
 
   for (let p = 0; p < pag.pages.length; p++) {
     const rowsIdx = pag.pages[p];
+    const isFirst = p === 0;
+
     const tbody = rowsIdx.map(i => `
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6;">
-        <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${i + 1}</td>
-        <td style="text-align:center; padding:3mm 1mm;">${c.items[i].qty || 1}</td>
-        <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${c.items[i].height}</td>
-        <td style="text-align:center; padding:3mm 1mm; white-space:nowrap;">${c.items[i].width}</td>
-        <td style="text-align:center; padding:3mm 1mm;">${buildFitaPDF(c.items[i])}</td>
+        <td style="text-align:center; padding:2mm 1mm; font-weight:600;">${i + 1}</td>
+        <td style="text-align:center; padding:2mm 1mm;">${c.items[i].qty || 1}</td>
+        <td style="text-align:center; padding:2mm 1mm; white-space:nowrap;">${c.items[i].height}</td>
+        <td style="text-align:center; padding:2mm 1mm; white-space:nowrap;">${c.items[i].width}</td>
+        <td style="text-align:center; padding:2mm 1mm;">${buildFitaPDF(c.items[i])}</td>
       </tr>`).join('');
 
     const bodyHTML = `
@@ -961,11 +1002,9 @@ async function buildCutPlanPDF(c) {
         <tbody>${tbody}</tbody>
       </table>`;
 
-    const pageHTML = buildA4Page(
-      pag.headerHTML,
-      pag.titleHTML + pag.metaHTML + bodyHTML,
-      pag.footerHTML
-    );
+    const pageHTML = isFirst
+      ? buildA4Page(pag.headerHTML, pag.titleHTML + pag.metaHTML + bodyHTML, pag.footerHTML)
+      : buildA4Page(pag.compactHeaderHTML, pag.compactMetaHTML + bodyHTML, pag.footerHTML);
 
     const canvas = await renderA4PageToCanvas(pageHTML);
 
@@ -985,40 +1024,51 @@ async function buildBudgetPDF(b) {
   const numCurto = b.number.split('-').pop();
   const conditions = (b.conditions || s.default_conditions || '').trim();
 
+  // Página 1 — cabeçalho completo
   const headerHTML = pdfHeaderBlock(s);
   const titleHTML = pdfDocTitleBlock(s, 'Orçamento', dataFormatada, numCurto);
   const metaHTML = pdfMetaBlock(`<div><strong>Cliente:</strong> ${escapeHtml(b.client_name)}</div>`);
+
+  // Páginas 2+ — cabeçalho compacto
+  const compactHeaderHTML = pdfCompactHeaderBlock(s, 'Orçamento', numCurto, dataFormatada);
+  const compactMetaHTML = pdfCompactMetaBlockBudget(b);
+
   const theadHTML = pdfTableHeadBudget();
   const footerHTML = pdfFooterBlock(s);
 
   const hHeader = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${headerHTML}</div>`);
   const hTitle = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${titleHTML}</div>`);
   const hMeta = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${metaHTML}</div>`);
+  const hCompactHeader = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${compactHeaderHTML}</div>`);
+  const hCompactMeta = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${compactMetaHTML}</div>`);
   const hThead = await measureBlockHeight(`<table style="width:100%; border-collapse:collapse;"><thead>${theadHTML.replace(/<\/?thead>/g, '')}</thead></table>`);
   const hFooter = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${footerHTML}</div>`);
 
   const alturaPaginaUtil = A4_H_PX - A4_PAD_TOP_PX - A4_PAD_BOT_PX;
-  const alturaFixosP1 = hHeader + hTitle + hMeta + hThead + hFooter + 8;
-  const espacoP1 = alturaPaginaUtil - alturaFixosP1;
-  const espacoPn = espacoP1;
+  const espacoP1 = alturaPaginaUtil - (hHeader + hTitle + hMeta + hThead + hFooter + 8);
+  const espacoPn = alturaPaginaUtil - (hCompactHeader + hCompactMeta + hThead + hFooter + 8);
 
+  // Mede cada linha com padding reduzido (2mm)
   const rowHeights = [];
   for (let i = 0; i < b.items.length; i++) {
     const rowHTML = `
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6;">
-        <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${i + 1}</td>
-        <td style="padding:3mm 1mm; font-weight:500; word-break:break-word;">${escapeHtml(b.items[i].name)}</td>
-        <td style="text-align:center; padding:3mm 1mm;">${b.items[i].qty}</td>
-        <td style="text-align:right; padding:3mm 1mm; white-space:nowrap;">${formatCurrency(b.items[i].price)}</td>
-        <td style="text-align:right; padding:3mm 1mm; font-weight:700; white-space:nowrap;">${formatCurrency(b.items[i].price * b.items[i].qty)}</td>
+        <td style="text-align:center; padding:2mm 1mm; font-weight:600;">${i + 1}</td>
+        <td style="padding:2mm 1mm; font-weight:500; word-break:break-word;">${escapeHtml(b.items[i].name)}</td>
+        <td style="text-align:center; padding:2mm 1mm;">${b.items[i].qty}</td>
+        <td style="text-align:right; padding:2mm 1mm; white-space:nowrap;">${formatCurrency(b.items[i].price)}</td>
+        <td style="text-align:right; padding:2mm 1mm; font-weight:700; white-space:nowrap;">${formatCurrency(b.items[i].price * b.items[i].qty)}</td>
       </tr>`;
     const h = await measureBlockHeight(`<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><tbody>${rowHTML}</tbody></table>`);
     rowHeights.push(h);
   }
 
+  // Total + condições (última página)
   const totalHTML = `<div style="display:flex; justify-content:flex-end; margin-top:4mm;"><div style="background:#000000; color:#ffffff; padding:3mm 6mm; font-size:11pt; font-weight:600; border-radius:1mm;">${formatCurrency(b.total)}</div></div>`;
   const hTotal = await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${totalHTML}</div>`);
-  const conditionsHTML = conditions ? `<div style="font-size:8pt; color:#000000; margin-top:4mm; padding-top:4mm; border-top:0.2mm solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>` : '';
+  const conditionsHTML = conditions
+    ? `<div style="font-size:8pt; color:#000000; margin-top:4mm; padding-top:4mm; border-top:0.2mm solid #dddddd;"><strong style="color:#000000;">Observações:</strong><br>${escapeHtml(conditions)}</div>`
+    : '';
   const hConditions = conditionsHTML ? await measureBlockHeight(`<div style="width:${A4_W_PX - 2 * A4_PAD_TOP_PX}px">${conditionsHTML}</div>`) : 0;
 
   const pages = [];
@@ -1039,6 +1089,7 @@ async function buildBudgetPDF(b) {
   }
   if (currentRows.length > 0) pages.push(currentRows);
 
+  // Garante total + conditions na última página
   const extraFinal = hTotal + hConditions + 4;
   while (pages.length > 0) {
     const last = pages[pages.length - 1];
@@ -1054,14 +1105,16 @@ async function buildBudgetPDF(b) {
 
   for (let p = 0; p < pages.length; p++) {
     const rowsIdx = pages[p];
+    const isFirst = p === 0;
     const isLast = p === pages.length - 1;
+
     const tbody = rowsIdx.map(i => `
       <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom:0.2mm solid #eef2f6;">
-        <td style="text-align:center; padding:3mm 1mm; font-weight:600;">${i + 1}</td>
-        <td style="padding:3mm 1mm; font-weight:500; word-break:break-word;">${escapeHtml(b.items[i].name)}</td>
-        <td style="text-align:center; padding:3mm 1mm;">${b.items[i].qty}</td>
-        <td style="text-align:right; padding:3mm 1mm; white-space:nowrap;">${formatCurrency(b.items[i].price)}</td>
-        <td style="text-align:right; padding:3mm 1mm; font-weight:700; white-space:nowrap;">${formatCurrency(b.items[i].price * b.items[i].qty)}</td>
+        <td style="text-align:center; padding:2mm 1mm; font-weight:600;">${i + 1}</td>
+        <td style="padding:2mm 1mm; font-weight:500; word-break:break-word;">${escapeHtml(b.items[i].name)}</td>
+        <td style="text-align:center; padding:2mm 1mm;">${b.items[i].qty}</td>
+        <td style="text-align:right; padding:2mm 1mm; white-space:nowrap;">${formatCurrency(b.items[i].price)}</td>
+        <td style="text-align:right; padding:2mm 1mm; font-weight:700; white-space:nowrap;">${formatCurrency(b.items[i].price * b.items[i].qty)}</td>
       </tr>`).join('');
 
     const bodyHTML = `
@@ -1071,7 +1124,10 @@ async function buildBudgetPDF(b) {
       </table>
       ${isLast ? totalHTML + conditionsHTML : ''}`;
 
-    const pageHTML = buildA4Page(headerHTML, titleHTML + metaHTML + bodyHTML, footerHTML);
+    const pageHTML = isFirst
+      ? buildA4Page(headerHTML, titleHTML + metaHTML + bodyHTML, footerHTML)
+      : buildA4Page(compactHeaderHTML, compactMetaHTML + bodyHTML, footerHTML);
+
     const canvas = await renderA4PageToCanvas(pageHTML);
 
     if (p > 0) pdf.addPage();
